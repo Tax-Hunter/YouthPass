@@ -1,1 +1,7 @@
+# CLAUDE
 .claude/
+.claudeignore
+
+# 기획 및 작업 기록
+PRD/
+workflow/
