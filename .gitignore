@@ -1,7 +1,33 @@
-# CLAUDE
+# CLAUDE / AI 어시스턴트
 .claude/
 .claudeignore
+CLAUDE.md
+AGENTS.md
 
 # 기획 및 작업 기록
 PRD/
 workflow/
+
+# 환경변수
+.env
+.env.*
+!.env.example
+
+# Python
+backend/venv/
+backend/__pycache__/
+backend/**/__pycache__/
+backend/**/*.pyc
+backend/.pytest_cache/
+
+# Node
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+
+# 로그
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
