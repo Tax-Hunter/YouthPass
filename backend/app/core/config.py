@@ -5,7 +5,7 @@ from pydantic_settings import BaseSettings
 class Settings(BaseSettings):
     PROJECT_NAME: str = "YouthPass API"
     VERSION: str = "0.1.0"
-    API_V1_STR: str = "/api/v1"
+    API_PREFIX: str = "/api"
 
     DATABASE_URL: str = Field(..., description="PostgreSQL connection URL")
 
