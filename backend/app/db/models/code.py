@@ -1,5 +1,5 @@
 """
-Code ORM — backend/db/schema.sql 의 `code` 테이블(코드정의서)에 매핑.
+Code ORM — backend/app/db/schema.sql 의 `code` 테이블(코드정의서)에 매핑.
 
 코드값 → 한글 라벨 마스터. 복합 PK (grp_cd, cd).
 (현재는 빈 테이블, API코드정보.xlsx 적재 예정)

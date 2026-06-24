@@ -1,4 +1,7 @@
-"""정책 조회 API — 목록/상세. (DB 데이터 로딩 검증용)"""
+"""정책 조회 API — 목록/상세. (DB 데이터 로딩 검증용)
+
+경로 규칙: /api/policy/get/policies, /api/policy/get/policy/{id}
+"""
 from datetime import date
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -6,10 +9,10 @@ from sqlalchemy import and_, or_
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
-from app.models import Policy
+from app.db.models import Policy
 from app.schemas.policy import PolicyCard, PolicyDetail, PolicyListResponse
 
-router = APIRouter(prefix="/policies", tags=["policies"])
+router = APIRouter(prefix="/policy", tags=["policy"])
 
 # 시도 법정동 코드 → 라벨 (17종 고정셋. 강원 51 / 전북 52 = 신코드)
 SIDO_LABELS = {
@@ -61,7 +64,7 @@ def _to_card(p: Policy) -> PolicyCard:
     )
 
 
-@router.get("", response_model=PolicyListResponse)
+@router.get("/get/policies", response_model=PolicyListResponse)
 def list_policies(
     db: Session = Depends(get_db),
     category: list[str] | None = Query(default=None, description="카테고리(다중)"),
@@ -109,7 +112,7 @@ def list_policies(
     )
 
 
-@router.get("/{policy_id}", response_model=PolicyDetail)
+@router.get("/get/policy/{policy_id}", response_model=PolicyDetail)
 def get_policy(policy_id: int, db: Session = Depends(get_db)):
     p = db.get(Policy, policy_id)
     if p is None:

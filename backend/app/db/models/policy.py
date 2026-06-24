@@ -1,5 +1,5 @@
 """
-Policy ORM — backend/db/schema.sql 의 `policy` 테이블에 매핑.
+Policy ORM — backend/app/db/schema.sql 의 `policy` 테이블에 매핑.
 
 스키마 정본은 schema.sql 이며, 본 모델은 조회/적재용 컬럼 매핑이다.
 (인덱스·CHECK 제약 등 DDL은 schema.sql 이 단일 진실)
