@@ -15,15 +15,22 @@ workflow/
 
 # Python
 backend/venv/
+backend/.venv/
+venv/
+.venv/
 backend/__pycache__/
 backend/**/__pycache__/
 backend/**/*.pyc
 backend/.pytest_cache/
+.pytest_cache/
+.mypy_cache/
 
 # Node
 frontend/node_modules/
 frontend/.next/
 frontend/out/
+frontend/.eslintcache
+frontend/*.tsbuildinfo
 
 # 로그
 *.log
@@ -31,6 +38,19 @@ frontend/out/
 # OS
 .DS_Store
 Thumbs.db
+
+# IDEs
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Databases
+*.db
+*.sqlite3
 
 # run.bat
 run.bat
