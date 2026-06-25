@@ -1,6 +1,6 @@
 import uuid
 
-from sqlalchemy import Column, DateTime, ForeignKey, Integer
+from sqlalchemy import Column, DateTime, ForeignKey, String
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
@@ -8,8 +8,8 @@ from sqlalchemy.sql import func
 from app.db.session import Base
 
 
-class Bookmark(Base):
-    __tablename__ = "bookmarks"
+class RefreshToken(Base):
+    __tablename__ = "refresh_tokens"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id = Column(
@@ -18,8 +18,8 @@ class Bookmark(Base):
         nullable=False,
         index=True,
     )
-    policy_id = Column(Integer, ForeignKey("policies.id"), nullable=False)
+    token_hash = Column(String(255), unique=True, nullable=False, index=True)
+    expires_at = Column(DateTime(timezone=True), nullable=False)
     created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
 
-    user = relationship("User", backref="bookmarks")
-    policy = relationship("Policy", backref="bookmarks")
+    user = relationship("User", backref="refresh_tokens")
