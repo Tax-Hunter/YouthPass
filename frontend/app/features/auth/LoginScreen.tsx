@@ -18,7 +18,7 @@ export default function LoginScreen({ onNavigate }: ScreenProps) {
           <span className="text-xs text-slate-400 font-medium">안전하고 간편하게 로그인하세요</span>
           <button
             onClick={() => {
-              window.location.href = `${process.env.NEXT_PUBLIC_API_URL}/auth/google/login`;
+              window.location.href = `${process.env.NEXT_PUBLIC_API_URL}/auth/get/google-login`;
             }}
             className="w-full flex items-center justify-center gap-3 py-3.5 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-semibold shadow-md shadow-blue-600/20 active:scale-[0.98] transition-all cursor-pointer"
           >

@@ -19,13 +19,13 @@ from app.schemas.auth import AccessTokenResponse, RefreshRequest
 router = APIRouter()
 
 
-@router.get("/google/login")
+@router.get("/get/google-login")
 def google_login():
     state = secrets.token_urlsafe(16)
     return RedirectResponse(url=get_google_auth_url(state))
 
 
-@router.get("/google/callback")
+@router.get("/get/google-callback")
 def google_callback(code: str, db: Session = Depends(get_db)):
     # 1. code → Google access token 교환
     token_res = httpx.post(
@@ -88,7 +88,7 @@ def google_callback(code: str, db: Session = Depends(get_db)):
     return RedirectResponse(url=redirect_url)
 
 
-@router.post("/refresh", response_model=AccessTokenResponse)
+@router.post("/post/refresh", response_model=AccessTokenResponse)
 def refresh_access_token(body: RefreshRequest, db: Session = Depends(get_db)):
     token_hash = hash_token(body.refresh_token)
     db_token = db.query(RefreshToken).filter(RefreshToken.token_hash == token_hash).first()
@@ -104,7 +104,7 @@ def refresh_access_token(body: RefreshRequest, db: Session = Depends(get_db)):
     return AccessTokenResponse(access_token=create_access_token(str(db_token.user_id)))
 
 
-@router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
+@router.post("/post/logout", status_code=status.HTTP_204_NO_CONTENT)
 def logout(body: RefreshRequest, db: Session = Depends(get_db)):
     db_token = db.query(RefreshToken).filter(RefreshToken.token_hash == hash_token(body.refresh_token)).first()
     if db_token:

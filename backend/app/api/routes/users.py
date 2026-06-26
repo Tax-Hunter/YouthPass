@@ -9,12 +9,12 @@ from app.schemas.user import ProfileUpdateRequest, SurveyRequest, UserResponse
 router = APIRouter()
 
 
-@router.get("/me", response_model=UserResponse)
+@router.get("/get/me", response_model=UserResponse)
 def get_me(current_user: User = Depends(get_current_user)):
     return current_user
 
 
-@router.patch("/me", response_model=UserResponse)
+@router.put("/put/me", response_model=UserResponse)
 def update_me(
     body: ProfileUpdateRequest,
     current_user: User = Depends(get_current_user),
@@ -27,7 +27,7 @@ def update_me(
     return current_user
 
 
-@router.post("/me/survey", response_model=UserResponse)
+@router.post("/post/survey", response_model=UserResponse)
 def submit_survey(
     body: SurveyRequest,
     current_user: User = Depends(get_current_user),
