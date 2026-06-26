@@ -1,11 +1,4 @@
-"""
-Policy ORM — backend/app/db/schema.sql 의 `policy` 테이블에 매핑.
-
-스키마 정본은 schema.sql 이며, 본 모델은 조회/적재용 컬럼 매핑이다.
-(인덱스·CHECK 제약 등 DDL은 schema.sql 이 단일 진실)
-"""
 from sqlalchemy import (
-    BigInteger,
     Boolean,
     Column,
     Date,
@@ -25,8 +18,7 @@ from app.db.session import Base
 class Policy(Base):
     __tablename__ = "policy"
 
-    id = Column(BigInteger, primary_key=True)
-    plcy_no = Column(String(30), nullable=False, unique=True)  # 정책번호(자연키)
+    plcy_no = Column(String(30), primary_key=True)             # 정책번호(자연키 PK)
 
     plcy_nm = Column(Text, nullable=False)                     # 정책명
     plcy_expln_cn = Column(Text)                               # 설명
@@ -60,12 +52,12 @@ class Policy(Base):
     rgtr_inst_cd = Column(String(10))                          # 등록기관코드
     aply_url_addr = Column(Text)                               # 신청 URL
 
-    inq_cnt = Column(Integer, nullable=False, server_default=text("0"))
     frst_reg_dt = Column(DateTime(timezone=True))              # 최초등록
     last_mdfcn_dt = Column(DateTime(timezone=True))            # 최종수정
 
     raw_data = Column(JSONB)                                   # API 원본 전체
     is_active = Column(Boolean, nullable=False, server_default=text("true"))
-    synced_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    content_hash = Column(String(32))                          # 변경감지용 해시
+    first_seen_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
     created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
     updated_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())

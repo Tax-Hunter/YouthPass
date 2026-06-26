@@ -1,6 +1,6 @@
 import uuid
 
-from sqlalchemy import Column, DateTime, ForeignKey, Integer
+from sqlalchemy import Column, DateTime, ForeignKey, String, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
@@ -18,8 +18,15 @@ class Bookmark(Base):
         nullable=False,
         index=True,
     )
-    policy_id = Column(Integer, ForeignKey("policies.id"), nullable=False)
+    plcy_no = Column(
+        String(30),
+        ForeignKey("policy.plcy_no", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
     created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+
+    __table_args__ = (UniqueConstraint("user_id", "plcy_no", name="uq_bookmarks_user_policy"),)
 
     user = relationship("User", backref="bookmarks")
     policy = relationship("Policy", backref="bookmarks")
