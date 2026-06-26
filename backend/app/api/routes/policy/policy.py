@@ -1,7 +1,3 @@
-"""정책 조회 API — 목록/상세. (DB 데이터 로딩 검증용)
-
-경로 규칙: /api/policy/get/policies, /api/policy/get/policy/{id}
-"""
 from datetime import date
 from typing import List, Optional, Tuple
 
@@ -15,7 +11,6 @@ from app.schemas.policy import PolicyCard, PolicyDetail, PolicyListResponse
 
 router = APIRouter(prefix="/policy", tags=["policy"])
 
-# 시도 법정동 코드 → 라벨 (17종 고정셋. 강원 51 / 전북 52 = 신코드)
 SIDO_LABELS = {
     "11": "서울", "26": "부산", "27": "대구", "28": "인천", "29": "광주",
     "30": "대전", "31": "울산", "36": "세종", "41": "경기", "43": "충북",
@@ -81,10 +76,10 @@ def list_policies(
     if category:
         q = q.filter(Policy.category.in_(category))
     if keywords:
-        q = q.filter(Policy.keywords.overlap(keywords))          # && (GIN)
+        q = q.filter(Policy.keywords.overlap(keywords))
     if sido:
         q = q.filter(or_(Policy.is_nationwide.is_(True),
-                         Policy.region_sido.contains([sido])))    # @> (GIN)
+                         Policy.region_sido.contains([sido])))
     if age is not None:
         q = q.filter(and_(
             or_(Policy.sprt_trgt_min_age.is_(None), Policy.sprt_trgt_min_age <= age),
@@ -103,7 +98,7 @@ def list_policies(
         q = q.order_by(Policy.plcy_no.desc())
     elif sort == "deadline":
         q = q.order_by(Policy.apply_end_date.asc().nullslast(), Policy.plcy_no.desc())
-    else:  # recent
+    else:
         q = q.order_by(Policy.first_seen_at.desc().nullslast(), Policy.plcy_no.desc())
 
     rows = q.offset((page - 1) * size).limit(size).all()
