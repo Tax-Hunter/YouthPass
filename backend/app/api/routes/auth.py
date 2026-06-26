@@ -1,5 +1,6 @@
 import secrets
 from datetime import datetime, timedelta, timezone
+from typing import Optional
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -53,7 +54,7 @@ def google_callback(code: str, db: Session = Depends(get_db)):
     userinfo = userinfo_res.json()
     google_id: str = userinfo["sub"]
     email: str = userinfo["email"]
-    profile_image: str | None = userinfo.get("picture")
+    profile_image: Optional[str] = userinfo.get("picture")
 
     # 3. 신규/기존 회원 분기
     user = db.query(User).filter(User.google_id == google_id).first()
