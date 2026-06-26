@@ -1,8 +1,5 @@
-"""정책 조회 API — 목록/상세. (DB 데이터 로딩 검증용)
-
-경로 규칙: /api/policy/get/policies, /api/policy/get/policy/{id}
-"""
 from datetime import date
+from typing import List, Optional, Tuple
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import and_, or_
@@ -14,7 +11,6 @@ from app.schemas.policy import PolicyCard, PolicyDetail, PolicyListResponse
 
 router = APIRouter(prefix="/policy", tags=["policy"])
 
-# 시도 법정동 코드 → 라벨 (17종 고정셋. 강원 51 / 전북 52 = 신코드)
 SIDO_LABELS = {
     "11": "서울", "26": "부산", "27": "대구", "28": "인천", "29": "광주",
     "30": "대전", "31": "울산", "36": "세종", "41": "경기", "43": "충북",
@@ -23,7 +19,7 @@ SIDO_LABELS = {
 }
 
 
-def _region_label(is_nationwide: bool, region_sido: list[str] | None) -> str:
+def _region_label(is_nationwide: bool, region_sido: Optional[List[str]]) -> str:
     if is_nationwide:
         return "전국 공통"
     labels = [SIDO_LABELS.get(c, c) for c in (region_sido or [])]
@@ -34,7 +30,7 @@ def _region_label(is_nationwide: bool, region_sido: list[str] | None) -> str:
     return f"{labels[0]} 외 {len(labels) - 1}곳"
 
 
-def _dday(is_always_open: bool, apply_end_date: date | None) -> tuple[str, int | None]:
+def _dday(is_always_open: bool, apply_end_date: Optional[date]) -> Tuple[str, Optional[int]]:
     if is_always_open:
         return "상시모집", None
     if apply_end_date is None:
@@ -48,7 +44,6 @@ def _dday(is_always_open: bool, apply_end_date: date | None) -> tuple[str, int |
 def _to_card(p: Policy) -> PolicyCard:
     label, days = _dday(p.is_always_open, p.apply_end_date)
     return PolicyCard(
-        id=p.id,
         plcy_no=p.plcy_no,
         plcy_nm=p.plcy_nm,
         category=p.category,
@@ -58,7 +53,7 @@ def _to_card(p: Policy) -> PolicyCard:
         benefit=p.plcy_sprt_cn or p.plcy_expln_cn,
         dday=label,
         days=days,
-        views=p.inq_cnt,
+        views=0,
         is_always_open=p.is_always_open,
         apply_end_date=p.apply_end_date,
     )
@@ -67,10 +62,10 @@ def _to_card(p: Policy) -> PolicyCard:
 @router.get("/get/policies", response_model=PolicyListResponse)
 def list_policies(
     db: Session = Depends(get_db),
-    category: list[str] | None = Query(default=None, description="카테고리(다중)"),
-    keywords: list[str] | None = Query(default=None, description="키워드(다중, 하나라도 포함)"),
-    sido: str | None = Query(default=None, description="시도코드(전국 OR 해당 시도)"),
-    age: int | None = Query(default=None, ge=0, description="나이(경계 포함 비교)"),
+    category: Optional[List[str]] = Query(default=None, description="카테고리(다중)"),
+    keywords: Optional[List[str]] = Query(default=None, description="키워드(다중, 하나라도 포함)"),
+    sido: Optional[str] = Query(default=None, description="시도코드(전국 OR 해당 시도)"),
+    age: Optional[int] = Query(default=None, ge=0, description="나이(경계 포함 비교)"),
     applicable: bool = Query(default=False, description="신청 가능한 것만"),
     sort: str = Query(default="recent", pattern="^(popular|deadline|recent)$"),
     page: int = Query(default=1, ge=1),
@@ -81,10 +76,10 @@ def list_policies(
     if category:
         q = q.filter(Policy.category.in_(category))
     if keywords:
-        q = q.filter(Policy.keywords.overlap(keywords))          # && (GIN)
+        q = q.filter(Policy.keywords.overlap(keywords))
     if sido:
         q = q.filter(or_(Policy.is_nationwide.is_(True),
-                         Policy.region_sido.contains([sido])))    # @> (GIN)
+                         Policy.region_sido.contains([sido])))
     if age is not None:
         q = q.filter(and_(
             or_(Policy.sprt_trgt_min_age.is_(None), Policy.sprt_trgt_min_age <= age),
@@ -100,11 +95,11 @@ def list_policies(
     total = q.count()
 
     if sort == "popular":
-        q = q.order_by(Policy.inq_cnt.desc(), Policy.id.desc())
+        q = q.order_by(Policy.plcy_no.desc())
     elif sort == "deadline":
-        q = q.order_by(Policy.apply_end_date.asc().nullslast(), Policy.id.desc())
-    else:  # recent
-        q = q.order_by(Policy.frst_reg_dt.desc().nullslast(), Policy.id.desc())
+        q = q.order_by(Policy.apply_end_date.asc().nullslast(), Policy.plcy_no.desc())
+    else:
+        q = q.order_by(Policy.first_seen_at.desc().nullslast(), Policy.plcy_no.desc())
 
     rows = q.offset((page - 1) * size).limit(size).all()
     return PolicyListResponse(
@@ -113,13 +108,12 @@ def list_policies(
 
 
 @router.get("/get/policy/{policy_id}", response_model=PolicyDetail)
-def get_policy(policy_id: int, db: Session = Depends(get_db)):
+def get_policy(policy_id: str, db: Session = Depends(get_db)):
     p = db.get(Policy, policy_id)
     if p is None:
         raise HTTPException(status_code=404, detail="policy not found")
     label, days = _dday(p.is_always_open, p.apply_end_date)
     return PolicyDetail(
-        id=p.id,
         plcy_no=p.plcy_no,
         plcy_nm=p.plcy_nm,
         category=p.category,
@@ -145,7 +139,7 @@ def get_policy(policy_id: int, db: Session = Depends(get_db)):
         days=days,
         sprvsn_inst_cd_nm=p.sprvsn_inst_cd_nm,
         aply_url_addr=p.aply_url_addr,
-        views=p.inq_cnt,
+        views=0,
         frst_reg_dt=p.frst_reg_dt,
         last_mdfcn_dt=p.last_mdfcn_dt,
     )
