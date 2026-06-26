@@ -1,6 +1,4 @@
-from typing import List
-
-from pydantic import Field, computed_field, field_validator
+from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings
 
 
@@ -20,22 +18,24 @@ class Settings(BaseSettings):
     GOOGLE_CLIENT_SECRET: str = Field(default="", description="Google OAuth 클라이언트 시크릿")
     GOOGLE_REDIRECT_URI: str = Field(default="", description="Google Cloud Console에 등록된 콜백 URI")
 
-    ALLOWED_ORIGINS: List[str] = Field(default=["http://localhost:3000"])
+    # 쉼표 구분 문자열로 받아 allowed_origins_list 프로퍼티에서 리스트로 변환
+    ALLOWED_ORIGINS: str = Field(default="http://localhost:3000")
+    FRONTEND_URL: str = Field(default="", description="OAuth 콜백 리다이렉트 대상 프론트엔드 URL")
 
-    @computed_field
     @property
-    def FRONTEND_URL(self) -> str:
-        return self.ALLOWED_ORIGINS[0]
+    def allowed_origins_list(self) -> list[str]:
+        return [o.strip() for o in self.ALLOWED_ORIGINS.split(",") if o.strip()]
+
+    @model_validator(mode="after")
+    def set_frontend_url_default(self) -> "Settings":
+        if not self.FRONTEND_URL:
+            origins = self.allowed_origins_list
+            if origins:
+                self.FRONTEND_URL = origins[0]
+        return self
 
     YOUTH_API_KEY: str = ""
     YOUTH_API_BASE_URL: str = "https://www.youthcenter.go.kr/opi/empInt.do"
-
-    @field_validator("ALLOWED_ORIGINS", mode="before")
-    @classmethod
-    def parse_allowed_origins(cls, v: object) -> List[str]:
-        if isinstance(v, str):
-            return [origin.strip() for origin in v.split(",") if origin.strip()]
-        return v
 
     model_config = {"env_file": ".env", "case_sensitive": True}
 
