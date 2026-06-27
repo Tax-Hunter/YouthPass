@@ -19,7 +19,7 @@ function CallbackHandler() {
     }
 
     tokenStorage.setTokens(accessToken, refreshToken);
-    router.replace(isNewUser ? "/onboarding" : "/");
+    router.replace(isNewUser ? "/onboarding" : "/home");
   }, [router, searchParams]);
 
   return (
