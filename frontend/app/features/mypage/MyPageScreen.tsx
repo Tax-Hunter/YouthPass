@@ -3,6 +3,8 @@
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useBookmarks } from "@/app/features/bookmarks/useBookmarks";
+import { useUser } from "@/lib/useUser";
+import { useLogout } from "@/lib/useLogout";
 
 interface ScreenProps {
   onNavigate?: (screenId: string) => void;
@@ -12,20 +14,53 @@ export default function MyPageScreen({ onNavigate }: ScreenProps) {
   const router = useRouter();
   const [alertsEnabled, setAlertsEnabled] = useState(true);
   const { bookmarks } = useBookmarks();
+  const { user, isLoading } = useUser();
+  const { logout, isLoggingOut } = useLogout();
+
+  const displayName = isLoading
+    ? null
+    : user
+    ? (user.nickname ?? user.email) + " 님"
+    : "닉네임 님";
+
+  const joinedAt = user?.created_at
+    ? user.created_at.slice(0, 10)
+    : null;
 
   return (
     <div className="flex flex-col h-full bg-white text-slate-800 font-sans select-none overflow-hidden">
       <div className="flex-1 overflow-y-auto min-h-[450px] flex flex-col pt-[76px]">
       {/* Main Profile Header */}
       <div className="px-6 py-6 flex items-center gap-4 shrink-0">
-        <div className="w-16 h-16 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-400">
-          <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-          </svg>
+        <div className="w-16 h-16 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-400 overflow-hidden">
+          {user?.profile_image ? (
+            <img
+              src={user.profile_image}
+              alt="프로필"
+              referrerPolicy="no-referrer"
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+            </svg>
+          )}
         </div>
         <div className="space-y-1">
-          <h2 className="text-[17px] font-bold text-slate-900 leading-tight">닉네임 님</h2>
-          <p className="text-xs text-slate-400 font-semibold">가입일 2026-06-16</p>
+          <h2 className="text-[17px] font-bold text-slate-900 leading-tight">
+            {isLoading ? (
+              <span className="inline-block w-24 h-4 bg-slate-200 rounded animate-pulse" />
+            ) : (
+              displayName
+            )}
+          </h2>
+          <p className="text-xs text-slate-400 font-semibold">
+            {isLoading ? (
+              <span className="inline-block w-32 h-3 bg-slate-200 rounded animate-pulse" />
+            ) : joinedAt ? (
+              `가입일 ${joinedAt}`
+            ) : null}
+          </p>
         </div>
       </div>
 
@@ -101,13 +136,11 @@ export default function MyPageScreen({ onNavigate }: ScreenProps) {
       {/* Logout Action button */}
       <div className="px-6 pb-10 pt-4 shrink-0 mt-auto">
         <button
-          onClick={() => onNavigate?.("login")}
-          onMouseEnter={() => {
-            router.prefetch("/login");
-          }}
-          className="w-full py-4 bg-white border border-slate-200 hover:border-rose-500 rounded-2xl text-[13px] font-bold text-slate-500 hover:text-rose-500 transition-colors active:scale-98 text-center"
+          onClick={logout}
+          disabled={isLoggingOut}
+          className="w-full py-4 bg-white border border-slate-200 hover:border-rose-500 rounded-2xl text-[13px] font-bold text-slate-500 hover:text-rose-500 transition-colors active:scale-98 text-center disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          로그아웃
+          {isLoggingOut ? "로그아웃 중..." : "로그아웃"}
         </button>
       </div>
 
