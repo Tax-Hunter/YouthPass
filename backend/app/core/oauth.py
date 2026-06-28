@@ -15,5 +15,6 @@ def get_google_auth_url(state: str) -> str:
         "scope": "openid email profile",
         "state": state,
         "access_type": "offline",
+        "prompt": "select_account",
     })
     return f"{GOOGLE_AUTH_URL}?{params}"
