@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { policies } from "@/app/data/policies";
-import { useBookmarks } from "./useBookmarks";
+import { useBookmarkStore } from "@/lib/store/bookmarkStore";
 import PolicyCard from "@/app/components/ui/PolicyCard";
 import OptionButton from "@/app/components/ui/OptionButton";
 
@@ -11,7 +11,7 @@ interface ScreenProps {
 }
 
 export default function BookmarkedScreen({ onNavigate }: ScreenProps) {
-  const { bookmarks, toggleBookmark } = useBookmarks();
+  const { bookmarks, toggle: toggleBookmark } = useBookmarkStore();
   const [activeTag, setActiveTag] = useState("#주거");
   const [upcomingOnly, setUpcomingOnly] = useState(false);
 

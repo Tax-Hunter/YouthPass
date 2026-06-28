@@ -3,7 +3,7 @@
 import React from "react";
 import { useRouter } from "next/navigation";
 import { policies } from "@/app/data/policies";
-import { useBookmarks } from "@/app/features/bookmarks/useBookmarks";
+import { useBookmarkStore } from "@/lib/store/bookmarkStore";
 import PolicyCard from "@/app/components/ui/PolicyCard";
 import PromoBanner from "@/app/components/ui/PromoBanner";
 
@@ -13,7 +13,7 @@ interface ScreenProps {
 
 export default function HomeScreen({ onNavigate }: ScreenProps) {
   const router = useRouter();
-  const { toggleBookmark, isBookmarked } = useBookmarks();
+  const { toggle: toggleBookmark, isBookmarked } = useBookmarkStore();
 
   // Get two ending-soon policies (e.g. D-3, D-5)
   const dDayPolicies = policies.filter((p) => p.dDay.startsWith("D-"));
