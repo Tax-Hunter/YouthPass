@@ -4,6 +4,7 @@ import React, { useState, Suspense, useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Header from "./Header";
 import ProfileScreen from "@/app/features/auth/ProfileScreen";
+import { useAuthStore } from "@/lib/store/authStore";
 
 interface Props {
   children: React.ReactNode;
@@ -13,6 +14,7 @@ export default function MobileLayout({ children }: Props) {
   const pathname = usePathname();
   const router = useRouter();
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const { user, isLoading: isUserLoading } = useAuthStore();
 
   // Prefetch other static pages for smoother transitions
   useEffect(() => {
@@ -97,6 +99,9 @@ export default function MobileLayout({ children }: Props) {
               {/* Drawer Content Area */}
               <div className="flex-1 flex flex-col overflow-hidden">
                 <ProfileScreen
+                  user={user}
+                  isLoading={isUserLoading}
+                  onClose={() => setIsProfileOpen(false)}
                   onNavigate={(target: string) => {
                     setIsProfileOpen(false);
                     router.push(`/${target}`);

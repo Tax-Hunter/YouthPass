@@ -3,46 +3,99 @@
 import React from "react";
 import { useRouter } from "next/navigation";
 import PromoBanner from "@/app/components/ui/PromoBanner";
+import { useLogout } from "@/lib/useLogout";
+
+interface User {
+  id: string;
+  email: string;
+  nickname: string | null;
+  profile_image: string | null;
+  created_at: string;
+  survey_completed: boolean;
+}
 
 interface ScreenProps {
   onNavigate?: (screenId: string) => void;
+  onClose?: () => void;
+  user: User | null;
+  isLoading: boolean;
 }
 
-export default function ProfileScreen({ onNavigate }: ScreenProps) {
+export default function ProfileScreen({ onNavigate, onClose, user, isLoading }: ScreenProps) {
   const router = useRouter();
+  const { logout, isLoggingOut } = useLogout({
+    onSuccess: () => onClose?.(),
+  });
+
+  const displayName = isLoading
+    ? null
+    : user
+    ? (user.nickname ?? user.email) + " 님"
+    : "닉네임 님";
+
   return (
     <div className="flex flex-col h-full bg-white text-slate-800 font-sans select-none overflow-hidden">
-      {/* Profile Header info block */}
-      <div className="px-6 py-6 flex items-center gap-4 shrink-0 border-b border-slate-50">
-        {/* Avatar Container */}
-        <div className="relative">
-          <div className="w-16 h-16 rounded-full bg-teal-600 flex items-center justify-center text-white overflow-hidden shadow-inner border border-teal-500">
-            {/* Standard SVG character icon mockup */}
-            <svg className="w-11 h-11 translate-y-1.5" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
-            </svg>
+      {/* Sticky Profile Header */}
+      <div className="sticky top-0 z-10 px-6 py-6 shrink-0 border-b border-slate-100 bg-white">
+        {!isLoading && !user ? (
+          /* 비로그인 상태 */
+          <div className="flex flex-col gap-3">
+            <p className="text-xs text-slate-400 font-medium text-center">안전하고 간편하게 로그인하세요</p>
+            <button
+              onClick={() => {
+                window.location.href = `${process.env.NEXT_PUBLIC_API_URL}/auth/get/google-login`;
+              }}
+              className="w-full flex items-center justify-center gap-3 py-3.5 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl text-[13px] font-bold shadow-md shadow-blue-600/20 active:scale-[0.98] transition-all"
+            >
+              <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24">
+                <path d="M12.24 10.285V14.4h6.887c-.648 2.41-2.519 4.114-5.136 4.114-3.513 0-6.38-2.87-6.38-6.38A6.378 6.378 0 0 1 14 5.75c1.459 0 2.64.5 3.559 1.341l3.181-3.18C18.822 2.1 15.64 1 12.24 1 6.033 1 1 6.033 1 12.24s5.033 11.24 11.24 11.24c5.899 0 10.985-4.103 10.985-11.24 0-.693-.06-1.342-.186-1.955H12.24z" />
+              </svg>
+              Google 계정으로 시작하기
+            </button>
           </div>
-          {/* Green Online Dot */}
-          <span className="absolute bottom-0.5 right-0.5 block h-4 w-4 rounded-full bg-emerald-500 ring-2 ring-white" />
-        </div>
-
-        <div className="space-y-1 cursor-pointer group" onClick={() => onNavigate?.("mypage")}>
-          <h2 className="text-[17px] font-bold text-slate-900 leading-none flex items-center gap-1.5 group-hover:text-blue-600 transition-colors">
-            닉네임 님
-            <svg className="w-4 h-4 text-slate-400 group-hover:text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
-            </svg>
-          </h2>
-          <p className="text-[10px] text-emerald-500 font-extrabold flex items-center gap-1">
-            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 block" />
-            로그인됨
-          </p>
-        </div>
+        ) : (
+          /* 로그인 상태 (로딩 중 포함) */
+          <div className="flex items-center gap-4">
+            <div className="relative">
+              <div className="w-16 h-16 rounded-full bg-teal-600 flex items-center justify-center text-white overflow-hidden shadow-inner border border-teal-500">
+                {user?.profile_image ? (
+                  <img
+                    src={user.profile_image}
+                    alt="프로필"
+                    referrerPolicy="no-referrer"
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <svg className="w-11 h-11 translate-y-1.5" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
+                  </svg>
+                )}
+              </div>
+              <span className="absolute bottom-0.5 right-0.5 block h-4 w-4 rounded-full bg-emerald-500 ring-2 ring-white" />
+            </div>
+            <div className="space-y-1 cursor-pointer group" onClick={() => onNavigate?.("mypage")}>
+              <h2 className="text-[17px] font-bold text-slate-900 leading-none flex items-center gap-1.5 group-hover:text-blue-600 transition-colors">
+                {isLoading ? (
+                  <span className="inline-block w-24 h-4 bg-slate-200 rounded animate-pulse" />
+                ) : (
+                  displayName
+                )}
+                <svg className="w-4 h-4 text-slate-400 group-hover:text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
+                </svg>
+              </h2>
+              <p className="text-[10px] text-emerald-500 font-extrabold flex items-center gap-1">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 block" />
+                로그인됨
+              </p>
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* Menu Sections */}
+      {/* Scrollable Menu Sections */}
       <div className="flex-1 overflow-y-auto px-6 py-5 space-y-6 flex flex-col">
-        
+
         {/* Section 1: 메뉴 */}
         <div className="space-y-2.5">
           <h4 className="text-[11px] font-bold text-slate-400 tracking-wide uppercase">메뉴</h4>
@@ -143,24 +196,24 @@ export default function ProfileScreen({ onNavigate }: ScreenProps) {
           }
         />
 
-        {/* Logout & Footer */}
-        <div className="pt-6 pb-8 flex flex-col items-center gap-4 shrink-0 mt-auto">
+      </div>
+
+      {/* Sticky Bottom: 로그인 상태일 때만 표시 */}
+      {(isLoading || user) && (
+        <div className="sticky bottom-0 shrink-0 px-6 pt-4 pb-6 flex flex-col items-center gap-3 border-t border-slate-100 bg-white">
           <button
-            onClick={() => onNavigate?.("login")}
-            onMouseEnter={() => {
-              router.prefetch("/login");
-            }}
-            className="w-full flex items-center justify-center gap-1.5 py-3.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-2xl text-[13px] font-bold transition-all active:scale-[0.98]"
+            onClick={logout}
+            disabled={isLoggingOut}
+            className="w-full flex items-center justify-center gap-1.5 py-3.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-2xl text-[13px] font-bold transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <svg className="w-4.5 h-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
             </svg>
-            로그아웃
+            {isLoggingOut ? "로그아웃 중..." : "로그아웃"}
           </button>
           <span className="text-[10px] text-slate-400 font-bold font-mono">Youth Policy Portal v1.2.0</span>
         </div>
-
-      </div>
+      )}
     </div>
   );
 }

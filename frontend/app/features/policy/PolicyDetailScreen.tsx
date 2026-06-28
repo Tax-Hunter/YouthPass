@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { policies } from "@/app/data/policies";
-import { useBookmarks } from "@/app/features/bookmarks/useBookmarks";
+import { useBookmarkStore } from "@/lib/store/bookmarkStore";
 import Badge from "@/app/components/ui/Badge";
 
 interface ScreenProps {
@@ -10,7 +10,7 @@ interface ScreenProps {
 }
 
 export default function PolicyDetailScreen({ onNavigate }: ScreenProps) {
-  const { toggleBookmark, isBookmarked } = useBookmarks();
+  const { toggle: toggleBookmark, isBookmarked } = useBookmarkStore();
   const [policyId, setPolicyId] = useState("rent-support-2nd");
   const [isApplied, setIsApplied] = useState(false);
   const [viewMode, setViewMode] = useState("data");

@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { policies } from "@/app/data/policies";
-import { useBookmarks } from "@/app/features/bookmarks/useBookmarks";
+import { useBookmarkStore } from "@/lib/store/bookmarkStore";
 import PolicyCard from "@/app/components/ui/PolicyCard";
 import FloatingFilterButton from "@/app/components/ui/FloatingFilterButton";
 
@@ -15,7 +15,7 @@ export default function SearchScreen({ onNavigate }: ScreenProps) {
   const router = useRouter();
   const [searchTerm, setSearchTerm] = useState("월세");
   const [recentSearches, setRecentSearches] = useState(["월세 지원", "청년 주거", "전세 대출"]);
-  const { toggleBookmark, isBookmarked } = useBookmarks();
+  const { toggle: toggleBookmark, isBookmarked } = useBookmarkStore();
 
   const clearSearch = () => setSearchTerm("");
   const deleteRecent = () => setRecentSearches([]);

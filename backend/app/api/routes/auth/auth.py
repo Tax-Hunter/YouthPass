@@ -55,16 +55,21 @@ def google_callback(code: str, db: Session = Depends(get_db)):
     google_id: str = userinfo["sub"]
     email: str = userinfo["email"]
     profile_image: Optional[str] = userinfo.get("picture")
+    google_name: Optional[str] = userinfo.get("name")
+    nickname: Optional[str] = google_name[:10] if google_name else None
 
     # 3. 신규/기존 회원 분기
     user = db.query(User).filter(User.google_id == google_id).first()
     is_new_user = user is None
 
     if is_new_user:
-        user = User(google_id=google_id, email=email, profile_image=profile_image)
+        user = User(google_id=google_id, email=email, nickname=nickname, profile_image=profile_image)
         db.add(user)
         db.commit()
         db.refresh(user)
+    elif user.nickname is None and nickname:
+        user.nickname = nickname
+        db.commit()
 
     # 4. JWT 발급 및 Refresh Token DB 저장
     access_token = create_access_token(str(user.id))
