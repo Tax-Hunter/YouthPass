@@ -15,7 +15,9 @@ export default function MyPageScreen({ onNavigate }: ScreenProps) {
   const [alertsEnabled, setAlertsEnabled] = useState(true);
   const { bookmarks } = useBookmarks();
   const { user, isLoading } = useUser();
-  const { logout, isLoggingOut } = useLogout();
+  const { logout, isLoggingOut } = useLogout({
+    onSuccess: () => router.replace("/home"),
+  });
 
   const displayName = isLoading
     ? null
