@@ -4,7 +4,7 @@ import React, { useState, Suspense, useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Header from "./Header";
 import ProfileScreen from "@/app/features/auth/ProfileScreen";
-import { useAuth } from "@/lib/AuthContext";
+import { useAuthStore } from "@/lib/store/authStore";
 
 interface Props {
   children: React.ReactNode;
@@ -14,7 +14,7 @@ export default function MobileLayout({ children }: Props) {
   const pathname = usePathname();
   const router = useRouter();
   const [isProfileOpen, setIsProfileOpen] = useState(false);
-  const { user, isLoading: isUserLoading } = useAuth();
+  const { user, isLoading: isUserLoading } = useAuthStore();
 
   // Prefetch other static pages for smoother transitions
   useEffect(() => {

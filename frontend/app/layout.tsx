@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import MobileLayout from "@/app/components/layout/MobileLayout";
-import { AuthProvider } from "@/lib/AuthContext";
+import AuthInit from "@/lib/AuthInit";
 
 export const metadata: Metadata = {
   title: "청년패스 — UI Design",
@@ -16,9 +16,8 @@ export default function RootLayout({
   return (
     <html lang="ko">
       <body>
-        <AuthProvider>
-          <MobileLayout>{children}</MobileLayout>
-        </AuthProvider>
+        <AuthInit />
+        <MobileLayout>{children}</MobileLayout>
       </body>
     </html>
   );

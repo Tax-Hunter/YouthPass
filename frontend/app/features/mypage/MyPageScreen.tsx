@@ -2,8 +2,8 @@
 
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useBookmarks } from "@/app/features/bookmarks/useBookmarks";
-import { useUser } from "@/lib/useUser";
+import { useBookmarkStore } from "@/lib/store/bookmarkStore";
+import { useAuthStore } from "@/lib/store/authStore";
 import { useLogout } from "@/lib/useLogout";
 
 interface ScreenProps {
@@ -13,8 +13,8 @@ interface ScreenProps {
 export default function MyPageScreen({ onNavigate }: ScreenProps) {
   const router = useRouter();
   const [alertsEnabled, setAlertsEnabled] = useState(true);
-  const { bookmarks } = useBookmarks();
-  const { user, isLoading } = useUser();
+  const { bookmarks } = useBookmarkStore();
+  const { user, isLoading } = useAuthStore();
   const { logout, isLoggingOut } = useLogout({
     onSuccess: () => router.replace("/home"),
   });
@@ -68,7 +68,7 @@ export default function MyPageScreen({ onNavigate }: ScreenProps) {
 
       {/* Settings Card Blocks */}
       <div className="px-6 py-2 space-y-4 shrink-0">
-        
+
         {/* Bookmarked Policy Card */}
         <button
           onClick={() => onNavigate?.("bookmarks")}

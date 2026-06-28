@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { tokenStorage } from "./tokenStorage";
-import { useAuth } from "./AuthContext";
+import { useAuthStore } from "./store/authStore";
 
 interface UseLogoutOptions {
   onSuccess?: () => void;
@@ -15,7 +15,7 @@ interface UseLogoutResult {
 
 export function useLogout(options?: UseLogoutOptions): UseLogoutResult {
   const [isLoggingOut, setIsLoggingOut] = useState(false);
-  const { clearUser } = useAuth();
+  const { clearUser } = useAuthStore();
 
   const logout = () => {
     if (isLoggingOut) return;
