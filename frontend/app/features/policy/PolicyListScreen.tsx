@@ -3,8 +3,8 @@
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { policies } from "@/app/data/policies";
-import { useBookmarks } from "@/app/features/bookmarks/useBookmarks";
-import { useFilters } from "@/app/features/filter/useFilters";
+import { useBookmarkStore } from "@/lib/store/bookmarkStore";
+import { useFilterStore } from "@/lib/store/filterStore";
 import PolicyCard from "@/app/components/ui/PolicyCard";
 import FloatingFilterButton from "@/app/components/ui/FloatingFilterButton";
 
@@ -14,8 +14,8 @@ interface ScreenProps {
 
 export default function PolicyListScreen({ onNavigate }: ScreenProps) {
   const router = useRouter();
-  const { isBookmarked, toggleBookmark } = useBookmarks();
-  const { filters } = useFilters();
+  const { isBookmarked, toggle: toggleBookmark } = useBookmarkStore();
+  const { filters } = useFilterStore();
   const [activeCategory, setActiveCategory] = useState("전체");
 
   // Filter based on state hooks

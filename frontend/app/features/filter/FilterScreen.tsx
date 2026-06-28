@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useFilters } from "./useFilters";
+import { useFilterStore } from "@/lib/store/filterStore";
 import SelectDropdown from "@/app/components/ui/SelectDropdown";
 import OptionButton from "@/app/components/ui/OptionButton";
 
@@ -12,7 +12,7 @@ interface ScreenProps {
 
 export default function FilterScreen({ onNavigate }: ScreenProps) {
   const router = useRouter();
-  const { filters, saveFilters } = useFilters();
+  const { filters, saveFilters } = useFilterStore();
   
   // Local form states
   const [city, setCity] = useState("서울특별시");
