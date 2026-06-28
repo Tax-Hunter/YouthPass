@@ -19,6 +19,17 @@ export const useAuthStore = create<AuthState>((set) => ({
   clearUser: () => set({ user: null, isLoading: false }),
 
   initAuth: async () => {
+    const pendingToken = tokenStorage.getPendingLogout()
+    if (pendingToken) {
+      fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/post/logout`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ refresh_token: pendingToken }),
+      })
+        .then(() => tokenStorage.clearPendingLogout())
+        .catch(() => {})
+    }
+
     const token = tokenStorage.getAccessToken()
     if (!token) {
       set({ isLoading: false })
