@@ -19,7 +19,8 @@ function CallbackHandler() {
     }
 
     tokenStorage.setTokens(accessToken, refreshToken);
-    router.replace(isNewUser ? "/onboarding" : "/home");
+    // 하드 네비게이션으로 AuthContext 재초기화 (로그인 상태 즉시 반영)
+    window.location.href = isNewUser ? "/onboarding" : "/home";
   }, [router, searchParams]);
 
   return (
