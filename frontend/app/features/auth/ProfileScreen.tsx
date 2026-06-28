@@ -4,24 +4,15 @@ import React from "react";
 import { useRouter } from "next/navigation";
 import PromoBanner from "@/app/components/ui/PromoBanner";
 import { useLogout } from "@/lib/useLogout";
-
-interface User {
-  id: string;
-  email: string;
-  nickname: string | null;
-  profile_image: string | null;
-  created_at: string;
-  survey_completed: boolean;
-}
+import { useAuthStore } from "@/lib/store/authStore";
 
 interface ScreenProps {
   onNavigate?: (screenId: string) => void;
   onClose?: () => void;
-  user: User | null;
-  isLoading: boolean;
 }
 
-export default function ProfileScreen({ onNavigate, onClose, user, isLoading }: ScreenProps) {
+export default function ProfileScreen({ onNavigate, onClose }: ScreenProps) {
+  const { user, isLoading } = useAuthStore();
   const router = useRouter();
   const { logout, isLoggingOut } = useLogout({
     onSuccess: () => onClose?.(),
