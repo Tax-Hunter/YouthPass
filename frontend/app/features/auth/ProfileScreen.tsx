@@ -3,18 +3,28 @@
 import React from "react";
 import { useRouter } from "next/navigation";
 import PromoBanner from "@/app/components/ui/PromoBanner";
-import { useUser } from "@/lib/useUser";
 import { useLogout } from "@/lib/useLogout";
+
+interface User {
+  id: string;
+  email: string;
+  nickname: string | null;
+  profile_image: string | null;
+  created_at: string;
+  survey_completed: boolean;
+}
 
 interface ScreenProps {
   onNavigate?: (screenId: string) => void;
+  onClose?: () => void;
+  user: User | null;
+  isLoading: boolean;
 }
 
-export default function ProfileScreen({ onNavigate }: ScreenProps) {
+export default function ProfileScreen({ onNavigate, onClose, user, isLoading }: ScreenProps) {
   const router = useRouter();
-  const { user, isLoading } = useUser();
   const { logout, isLoggingOut } = useLogout({
-    onSuccess: () => onNavigate?.("login"),
+    onSuccess: () => onClose?.(),
   });
 
   const displayName = isLoading
@@ -85,7 +95,7 @@ export default function ProfileScreen({ onNavigate }: ScreenProps) {
 
       {/* Scrollable Menu Sections */}
       <div className="flex-1 overflow-y-auto px-6 py-5 space-y-6 flex flex-col">
-        
+
         {/* Section 1: 메뉴 */}
         <div className="space-y-2.5">
           <h4 className="text-[11px] font-bold text-slate-400 tracking-wide uppercase">메뉴</h4>
