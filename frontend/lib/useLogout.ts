@@ -34,7 +34,9 @@ export function useLogout(options?: UseLogoutOptions): UseLogoutResult {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ refresh_token: refreshToken }),
-      }).catch(() => {});
+      }).catch(() => {
+        tokenStorage.setPendingLogout(refreshToken);
+      });
     }
   };
 
