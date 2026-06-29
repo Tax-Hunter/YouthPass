@@ -38,13 +38,11 @@ export const useAuthStore = create<AuthState>((set) => ({
     }
 
     try {
-      const res = await fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL}/users/get/me`)
-      if (res.ok) {
-        set({ user: (await res.json()) as User, isLoading: false })
-      } else {
-        if (res.status === 401) tokenStorage.clear()
-        set({ user: null, isLoading: false })
-      }
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users/get/me`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      const user = res.ok ? ((await res.json()) as User) : null
+      set({ user, isLoading: false })
     } catch {
       set({ user: null, isLoading: false })
     }
