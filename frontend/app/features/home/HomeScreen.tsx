@@ -4,6 +4,9 @@ import React from "react";
 import { useRouter } from "next/navigation";
 import { policies } from "@/app/data/policies";
 import { useBookmarkStore } from "@/lib/store/bookmarkStore";
+import { useAuthStore } from "@/lib/store/authStore";
+import { useUiStore } from "@/lib/store/uiStore";
+import { useHydrated } from "@/lib/useHydrated";
 import PolicyCard from "@/app/components/ui/PolicyCard";
 import PromoBanner from "@/app/components/ui/PromoBanner";
 
@@ -14,6 +17,17 @@ interface ScreenProps {
 export default function HomeScreen({ onNavigate }: ScreenProps) {
   const router = useRouter();
   const { toggle: toggleBookmark, isBookmarked } = useBookmarkStore();
+  const { user } = useAuthStore();
+  const { openLoginModal } = useUiStore();
+  const hydrated = useHydrated();
+
+  const handleLocationNavigate = () => {
+    if (!user) {
+      openLoginModal();
+      return;
+    }
+    onNavigate?.("location");
+  };
 
   // Get two ending-soon policies (e.g. D-3, D-5)
   const dDayPolicies = policies.filter((p) => p.dDay.startsWith("D-"));
@@ -43,10 +57,10 @@ export default function HomeScreen({ onNavigate }: ScreenProps) {
           </p>
         </div>
 
-        <button 
-          onClick={() => onNavigate?.("location")}
+        <button
+          onClick={handleLocationNavigate}
           onMouseEnter={() => {
-            router.prefetch("/location");
+            if (user) router.prefetch("/location");
           }}
           className="relative z-10 px-5 py-2.5 bg-white text-blue-600 hover:bg-blue-50 text-[13px] font-bold rounded-xl shadow-md transition-all active:scale-[0.98]"
         >
@@ -121,7 +135,7 @@ export default function HomeScreen({ onNavigate }: ScreenProps) {
             <PolicyCard
               key={policy.id}
               policy={policy}
-              isBookmarked={isBookmarked(policy.id)}
+              isBookmarked={hydrated && isBookmarked(policy.id)}
               onToggleBookmark={() => toggleBookmark(policy.id)}
               onClick={() => handleCardClick(policy.id)}
               showCategory={true}
@@ -162,6 +176,7 @@ export default function HomeScreen({ onNavigate }: ScreenProps) {
           }
         />
       </section>
+
     </div>
   );
 }
