@@ -8,10 +8,12 @@ class PolicyCard(BaseModel):
     plcy_no: str
     plcy_nm: str
     category: Optional[str] = None
+    keywords: List[str] = []  # 통제어휘(목록 카드에도 제공)
     region: str
     org: Optional[str] = None
     summary: Optional[str] = None
     benefit: Optional[str] = None
+    age_label: str  # 연령 표시(범위/한쪽/무관/확인필요 폴백)
     dday: str
     days: Optional[int] = None
     views: int
@@ -25,6 +27,19 @@ class PolicyListResponse(BaseModel):
     page: int
     size: int
     items: List[PolicyCard]
+
+
+class Eligibility(BaseModel):
+    # 지원대상 구조화 (각 항목은 의미있을 때만 채워짐 — '제한없음'은 생략)
+    age: str                              # 연령 (age_label)
+    region: str                           # 거주지역
+    income: Optional[str] = None          # 소득 조건
+    marriage: Optional[str] = None        # 혼인 (제한없음 생략)
+    job: Optional[str] = None             # 취업상태 요건
+    education: Optional[str] = None        # 학력 요건
+    major: Optional[str] = None            # 전공 요건
+    specialization: Optional[str] = None   # 특화분야
+    additional: Optional[str] = None       # 추가 자격조건 원문
 
 
 class PolicyDetail(BaseModel):
@@ -43,6 +58,7 @@ class PolicyDetail(BaseModel):
 
     sprt_trgt_min_age: Optional[int] = None
     sprt_trgt_max_age: Optional[int] = None
+    age_label: str  # 연령 표시 폴백(범위/한쪽/무관/확인필요)
     earn_cnd_se_cd: Optional[str] = None
     earn_cnd_se_nm: Optional[str] = None  # 코드 라벨(code 테이블)
     earn_min_amt: Optional[int] = None
@@ -63,3 +79,16 @@ class PolicyDetail(BaseModel):
     views: int
     frst_reg_dt: Optional[datetime] = None
     last_mdfcn_dt: Optional[datetime] = None
+
+    eligibility: Eligibility           # 지원대상 구조화
+    target: str                        # 지원대상 조합 문자열(프론트 즉시 호환)
+
+    # 상세 안내 섹션 (raw_data 추출 + placeholder 정제 → 빈값은 None)
+    apply_method: Optional[str] = None    # 신청 방법
+    documents: Optional[str] = None        # 제출 서류
+    screening: Optional[str] = None        # 심사/선정 방법
+    etc_notes: Optional[str] = None        # 기타 사항
+    oper_inst_nm: Optional[str] = None     # 운영기관명(주관기관과 별개)
+    contact: Optional[str] = None          # 문의처/담당 부서
+    ref_urls: List[str] = []               # 참고 링크
+    biz_period: Optional[str] = None       # 사업 기간(신청기간과 별개)
