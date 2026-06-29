@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { policies } from "@/app/data/policies";
 import { useBookmarkStore } from "@/lib/store/bookmarkStore";
+import { useHydrated } from "@/lib/useHydrated";
 import Badge from "@/app/components/ui/Badge";
 
 interface ScreenProps {
@@ -11,6 +12,7 @@ interface ScreenProps {
 
 export default function PolicyDetailScreen({ onNavigate }: ScreenProps) {
   const { toggle: toggleBookmark, isBookmarked } = useBookmarkStore();
+  const hydrated = useHydrated();
   const [policyId, setPolicyId] = useState("rent-support-2nd");
   const [isApplied, setIsApplied] = useState(false);
   const [viewMode, setViewMode] = useState("data");
@@ -39,7 +41,7 @@ export default function PolicyDetailScreen({ onNavigate }: ScreenProps) {
   }, []);
 
   const policy = policies.find((p) => p.id === policyId) || policies[0];
-  const isFav = isBookmarked(policy.id);
+  const isFav = hydrated && isBookmarked(policy.id);
   const showSkeleton = viewMode === "skeleton";
 
   return (

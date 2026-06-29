@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { policies } from "@/app/data/policies";
 import { useBookmarkStore } from "@/lib/store/bookmarkStore";
+import { useHydrated } from "@/lib/useHydrated";
 import PolicyCard from "@/app/components/ui/PolicyCard";
 import FloatingFilterButton from "@/app/components/ui/FloatingFilterButton";
 
@@ -16,6 +17,7 @@ export default function SearchScreen({ onNavigate }: ScreenProps) {
   const [searchTerm, setSearchTerm] = useState("월세");
   const [recentSearches, setRecentSearches] = useState(["월세 지원", "청년 주거", "전세 대출"]);
   const { toggle: toggleBookmark, isBookmarked } = useBookmarkStore();
+  const hydrated = useHydrated();
 
   const clearSearch = () => setSearchTerm("");
   const deleteRecent = () => setRecentSearches([]);
@@ -122,7 +124,7 @@ export default function SearchScreen({ onNavigate }: ScreenProps) {
           </div>
         ) : (
           searchResults.map((policy) => {
-            const isFav = isBookmarked(policy.id);
+            const isFav = hydrated && isBookmarked(policy.id);
             if (policy.isFeatured) {
               return (
                 <div
@@ -152,7 +154,7 @@ export default function SearchScreen({ onNavigate }: ScreenProps) {
               <PolicyCard
                 key={policy.id}
                 policy={policy}
-                isBookmarked={isBookmarked(policy.id)}
+                isBookmarked={hydrated && isBookmarked(policy.id)}
                 onToggleBookmark={() => toggleBookmark(policy.id)}
                 onClick={() => handleCardClick(policy.id)}
                 showCategory={true}

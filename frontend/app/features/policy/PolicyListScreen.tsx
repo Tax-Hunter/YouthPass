@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { policies } from "@/app/data/policies";
 import { useBookmarkStore } from "@/lib/store/bookmarkStore";
+import { useHydrated } from "@/lib/useHydrated";
 import { useFilterStore } from "@/lib/store/filterStore";
 import PolicyCard from "@/app/components/ui/PolicyCard";
 import FloatingFilterButton from "@/app/components/ui/FloatingFilterButton";
@@ -15,6 +16,7 @@ interface ScreenProps {
 export default function PolicyListScreen({ onNavigate }: ScreenProps) {
   const router = useRouter();
   const { isBookmarked, toggle: toggleBookmark } = useBookmarkStore();
+  const hydrated = useHydrated();
   const { filters } = useFilterStore();
   const [activeCategory, setActiveCategory] = useState("전체");
 
@@ -55,7 +57,7 @@ export default function PolicyListScreen({ onNavigate }: ScreenProps) {
             <PolicyCard
               key={policy.id}
               policy={policy}
-              isBookmarked={isBookmarked(policy.id)}
+              isBookmarked={hydrated && isBookmarked(policy.id)}
               onToggleBookmark={() => toggleBookmark(policy.id)}
               onClick={() => handleCardClick(policy.id)}
               showCategory={true}

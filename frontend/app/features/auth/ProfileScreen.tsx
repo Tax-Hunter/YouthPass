@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import PromoBanner from "@/app/components/ui/PromoBanner";
 import { useLogout } from "@/lib/useLogout";
 import { useAuthStore } from "@/lib/store/authStore";
+import { useUiStore } from "@/lib/store/uiStore";
 
 interface ScreenProps {
   onNavigate?: (screenId: string) => void;
@@ -13,6 +14,7 @@ interface ScreenProps {
 
 export default function ProfileScreen({ onNavigate, onClose }: ScreenProps) {
   const { user, isLoading } = useAuthStore();
+  const { openLoginModal, openSupportModal } = useUiStore();
   const router = useRouter();
   const { logout, isLoggingOut } = useLogout({
     onSuccess: () => onClose?.(),
@@ -92,10 +94,10 @@ export default function ProfileScreen({ onNavigate, onClose }: ScreenProps) {
           <h4 className="text-[11px] font-bold text-slate-400 tracking-wide uppercase">메뉴</h4>
           <div className="space-y-1">
             {[
-              { id: "", label: "홈", icon: "home", color: "bg-blue-50 text-blue-600" },
-              { id: "list", label: "정책 목록", icon: "list", color: "bg-slate-100 text-slate-600" },
-              { id: "mypage", label: "마이페이지", icon: "user", color: "bg-slate-100 text-slate-600" },
-            ].map((item) => (
+              { id: "home", label: "홈", icon: "home", color: "bg-blue-50 text-blue-600", requireAuth: false },
+              { id: "list", label: "정책 목록", icon: "list", color: "bg-slate-100 text-slate-600", requireAuth: false },
+              { id: "mypage", label: "마이페이지", icon: "user", color: "bg-slate-100 text-slate-600", requireAuth: true },
+            ].filter((item) => !item.requireAuth || !!user).map((item) => (
               <button
                 key={item.id}
                 onClick={() => onNavigate?.(item.id)}
@@ -139,12 +141,14 @@ export default function ProfileScreen({ onNavigate, onClose }: ScreenProps) {
           <h4 className="text-[11px] font-bold text-slate-400 tracking-wide uppercase">서비스 및 지원</h4>
           <div className="space-y-1">
             {[
-              { id: "support", label: "고객센터", icon: "support" },
-              { id: "settings", label: "알림 설정", icon: "settings" },
-            ].map((item) => (
+              { id: "support", label: "고객센터", icon: "support", requireAuth: false },
+              { id: "settings", label: "알림 설정", icon: "settings", requireAuth: true },
+            ].filter((item) => !item.requireAuth || !!user).map((item) => (
               <button
                 key={item.id}
-                onClick={() => alert(`${item.label} 메뉴 준비 중입니다.`)}
+                onClick={() => {
+                  if (item.id === "support") openSupportModal();
+                }}
                 className="w-full flex items-center justify-between py-3.5 px-2 hover:bg-slate-50 rounded-xl transition-all group"
               >
                 <div className="flex items-center gap-3">
@@ -174,9 +178,15 @@ export default function ProfileScreen({ onNavigate, onClose }: ScreenProps) {
 
         {/* Promo banner: 나에게 맞는 정책 찾기 */}
         <PromoBanner
-          onClick={() => onNavigate?.("location")}
+          onClick={() => {
+            if (!user) {
+              openLoginModal();
+              return;
+            }
+            onNavigate?.("location");
+          }}
           onMouseEnter={() => {
-            router.prefetch("/location");
+            if (user) router.prefetch("/location");
           }}
           title={<span className="text-[13px] font-extrabold text-blue-600">나에게 맞는 정책 찾기</span>}
           subtitle={<p className="text-[10px] text-slate-400 font-semibold leading-none">지금 바로 혜택을 찾아보세요</p>}
@@ -205,6 +215,7 @@ export default function ProfileScreen({ onNavigate, onClose }: ScreenProps) {
           <span className="text-[10px] text-slate-400 font-bold font-mono">Youth Policy Portal v1.2.0</span>
         </div>
       )}
+
     </div>
   );
 }
