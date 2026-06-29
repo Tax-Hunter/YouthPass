@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 
 interface Props {
   onNavigate?: (screenId: string) => void;
@@ -9,6 +9,9 @@ interface Props {
   currentScreen?: string;
   onProfileClick?: () => void;
   pathname?: string;
+  onBack?: () => void;
+  onSkip?: () => void;
+  skipLabel?: string;
 }
 
 export default function Header({
@@ -17,15 +20,15 @@ export default function Header({
   currentScreen,
   onProfileClick,
   pathname,
+  onBack,
+  onSkip,
+  skipLabel = "나중에 하기",
 }: Props) {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const [isScrolled, setIsScrolled] = useState(false);
 
-  // Reset scroll state on navigation and track scroll direction to show header on up-scroll
   useEffect(() => {
     let lastScrollTop = 0;
-    setIsScrolled(false);
 
     const handleScroll = (e: Event) => {
       const target = e.target as HTMLElement;
@@ -33,12 +36,9 @@ export default function Header({
 
       const currentScrollTop = target.scrollTop;
 
-      // Always show header at the very top (<= 10px)
       if (currentScrollTop <= 10) {
         setIsScrolled(false);
       } else {
-        // Scrolling up -> show header (isScrolled = false)
-        // Scrolling down -> hide/shrink header (isScrolled = true)
         if (currentScrollTop < lastScrollTop) {
           setIsScrolled(false);
         } else if (currentScrollTop > lastScrollTop) {
@@ -48,10 +48,10 @@ export default function Header({
       lastScrollTop = currentScrollTop;
     };
 
-    // Capture phase scroll listener to intercept scroll events globally
     window.addEventListener("scroll", handleScroll, true);
     return () => {
       window.removeEventListener("scroll", handleScroll, true);
+      setIsScrolled(false);
     };
   }, [pathname]);
 
@@ -72,12 +72,12 @@ export default function Header({
         isScrolled ? "top-[48%]" : "top-[53%]"
       }`}
     >
+      {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src="/images/logo.png"
         alt="청년패스 로고"
-        className={`object-contain rounded-md transition-all duration-300 ${
-          isScrolled ? "h-[36px]" : "h-[60px]"
-        }`}
+        style={{ width: "auto", height: isScrolled ? "2.25rem" : "3.75rem", transition: "height 0.3s" }}
+        className="object-contain rounded-md"
       />
     </button>
   );
@@ -90,12 +90,10 @@ export default function Header({
 
   if (isLocationHeader) {
     return (
-      <header className={`w-full flex items-center justify-between px-5 absolute top-0 left-0 right-0 z-30 shrink-0 box-border select-none transition-all duration-300 ${isScrolled ? "h-[54px] pt-1" : "h-[76px] pt-3"} ${headerBgClass}`}>
+      <header className={`w-full flex items-center justify-between px-5 absolute top-0 left-0 right-0 z-30 shrink-0 box-border select-none transition-all duration-300 ${isScrolled ? "h-13.5 pt-1" : "h-19 pt-3"} ${headerBgClass}`}>
         {/* Left Back Arrow & Text */}
         <button
-          onClick={() => {
-            router.back();
-          }}
+          onClick={() => onBack ? onBack() : router.back()}
           className={`flex items-center text-sm font-bold text-blue-600 hover:text-blue-700 transition-all duration-300 p-1 active:scale-95 shrink-0 ${buttonOpacityClass}`}
         >
           <svg className="w-5 h-5 mr-0.5 stroke-[2.5]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -109,13 +107,10 @@ export default function Header({
 
         {/* Right Action */}
         <button
-          onClick={() => router.push("/home")}
-          onMouseEnter={() => {
-            router.prefetch("/home");
-          }}
+          onClick={() => onSkip ? onSkip() : router.push("/home")}
           className={`text-xs font-bold text-slate-400 hover:text-slate-700 transition-all duration-300 p-1 active:scale-95 shrink-0 ${buttonOpacityClass}`}
         >
-          나중에 하기
+          {skipLabel}
         </button>
       </header>
     );
@@ -125,7 +120,7 @@ export default function Header({
   const showRightActions = pathname !== "/login";
 
   return (
-    <header className={`w-full flex items-center justify-between px-5 absolute top-0 left-0 right-0 z-30 shrink-0 box-border select-none transition-all duration-300 ${isScrolled ? "h-[54px] pt-1" : "h-[76px] pt-3"} ${headerBgClass}`}>
+    <header className={`w-full flex items-center justify-between px-5 absolute top-0 left-0 right-0 z-30 shrink-0 box-border select-none transition-all duration-300 ${isScrolled ? "h-13.5 pt-1" : "h-19 pt-3"} ${headerBgClass}`}>
       {/* Left Back Button */}
       <button
         onClick={() => {

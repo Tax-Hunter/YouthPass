@@ -12,4 +12,6 @@ export interface FilterState {
   district: string
   employment: string
   categories: Record<string, boolean>
+  keywords?: string[]
+  age?: number
 }

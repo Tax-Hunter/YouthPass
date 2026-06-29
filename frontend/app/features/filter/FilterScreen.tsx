@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useFilterStore } from "@/lib/store/filterStore";
 import SelectDropdown from "@/app/components/ui/SelectDropdown";
@@ -13,25 +13,11 @@ interface ScreenProps {
 export default function FilterScreen({ onNavigate }: ScreenProps) {
   const router = useRouter();
   const { filters, saveFilters } = useFilterStore();
-  
-  // Local form states
-  const [city, setCity] = useState("서울특별시");
-  const [district, setDistrict] = useState("전체");
-  const [employment, setEmployment] = useState("미취업");
-  const [categories, setCategories] = useState<Record<string, boolean>>({
-    주거: true,
-    금융: true,
-    일자리: false,
-    교육: false,
-  });
 
-  // Sync state from hook on load
-  useEffect(() => {
-    setCity(filters.city);
-    setDistrict(filters.district);
-    setEmployment(filters.employment);
-    setCategories(filters.categories);
-  }, [filters]);
+  const [city, setCity] = useState(() => filters.city);
+  const [district, setDistrict] = useState(() => filters.district);
+  const [employment, setEmployment] = useState(() => filters.employment);
+  const [categories, setCategories] = useState<Record<string, boolean>>(() => filters.categories);
 
   const toggleCategory = (cat: string) => {
     setCategories((prev) => ({ ...prev, [cat]: !prev[cat] }));
@@ -51,12 +37,12 @@ export default function FilterScreen({ onNavigate }: ScreenProps) {
 
   const applyFilters = () => {
     saveFilters({
+      ...filters,
       city,
       district,
       employment,
       categories,
     });
-    // Navigate back to directory
     onNavigate?.("list");
   };
 
@@ -82,17 +68,17 @@ export default function FilterScreen({ onNavigate }: ScreenProps) {
       </div>
 
       {/* Dim overlay */}
-      <div 
+      <div
         onClick={() => onNavigate?.("list")}
         onMouseEnter={() => {
           router.prefetch("/list");
         }}
-        className="absolute inset-0 bg-black/40 z-10 cursor-pointer" 
+        className="absolute inset-0 bg-black/40 z-10 cursor-pointer"
       />
 
       {/* Bottom Sheet Drawer */}
-      <div className="relative bg-white rounded-t-[32px] shadow-2xl z-20 flex flex-col max-h-[90%] animate-slide-up border-t border-slate-100 shrink-0">
-        
+      <div className="relative bg-white rounded-t-4xl shadow-2xl z-20 flex flex-col max-h-[90%] animate-slide-up border-t border-slate-100 shrink-0">
+
         {/* Handle */}
         <div className="w-full flex justify-center py-3 shrink-0">
           <div className="w-12 h-1 bg-slate-200 rounded-full" />
@@ -179,7 +165,7 @@ export default function FilterScreen({ onNavigate }: ScreenProps) {
             </svg>
             초기화
           </button>
-          
+
           <button
             onClick={applyFilters}
             onMouseEnter={() => {

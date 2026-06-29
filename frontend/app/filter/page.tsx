@@ -1,10 +1,26 @@
 "use client";
 
-import React from "react";
-import { useRouter } from "next/navigation";
+import React, { Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import FilterScreen from "@/app/features/filter/FilterScreen";
 
-export default function FilterPage() {
+function FilterPageInner() {
   const router = useRouter();
-  return <FilterScreen onNavigate={(screenId) => router.push(`/${screenId}`)} />;
+  const searchParams = useSearchParams();
+  const from = searchParams.get("from") ?? "list";
+  return (
+    <FilterScreen
+      onNavigate={(screenId) =>
+        router.push(`/${screenId === "list" ? from : screenId}`)
+      }
+    />
+  );
+}
+
+export default function FilterPage() {
+  return (
+    <Suspense>
+      <FilterPageInner />
+    </Suspense>
+  );
 }

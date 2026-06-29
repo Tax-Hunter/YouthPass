@@ -10,12 +10,15 @@ export default function LocationPage() {
   const { user, isLoading } = useAuthStore();
 
   useEffect(() => {
-    if (!isLoading && !user) {
+    if (isLoading) return;
+    if (!user) {
       router.replace("/home");
+    } else if (!user.survey_completed) {
+      router.replace("/survey");
     }
   }, [isLoading, user, router]);
 
-  if (isLoading || !user) return null;
+  if (isLoading || !user || !user.survey_completed) return null;
 
   return <LocationScreen onNavigate={(screenId) => router.push(`/${screenId}`)} />;
 }

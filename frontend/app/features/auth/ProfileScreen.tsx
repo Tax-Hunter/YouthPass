@@ -183,10 +183,10 @@ export default function ProfileScreen({ onNavigate, onClose }: ScreenProps) {
               openLoginModal();
               return;
             }
-            onNavigate?.("location");
+            onNavigate?.("survey");
           }}
           onMouseEnter={() => {
-            if (user) router.prefetch("/location");
+            if (user) router.prefetch("/survey");
           }}
           title={<span className="text-[13px] font-extrabold text-blue-600">나에게 맞는 정책 찾기</span>}
           subtitle={<p className="text-[10px] text-slate-400 font-semibold leading-none">지금 바로 혜택을 찾아보세요</p>}
