@@ -4,6 +4,9 @@ import React, { useState, Suspense, useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Header from "./Header";
 import ProfileScreen from "@/app/features/auth/ProfileScreen";
+import LoginPromptModal from "@/app/components/ui/LoginPromptModal";
+import ComingSoonModal from "@/app/components/ui/ComingSoonModal";
+import { useUiStore } from "@/lib/store/uiStore";
 
 interface Props {
   children: React.ReactNode;
@@ -13,6 +16,7 @@ export default function MobileLayout({ children }: Props) {
   const pathname = usePathname();
   const router = useRouter();
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const { loginModalOpen, closeLoginModal, supportModalOpen, closeSupportModal } = useUiStore();
 
   // Prefetch other static pages for smoother transitions
   useEffect(() => {
@@ -72,6 +76,16 @@ export default function MobileLayout({ children }: Props) {
         <div className="flex-1 min-h-0 overflow-hidden relative">
           {children}
         </div>
+
+        {/* Login Prompt Modal — rendered at phone-frame level (z-[60], above drawer z-50) */}
+        {loginModalOpen && (
+          <LoginPromptModal onClose={closeLoginModal} />
+        )}
+
+        {/* Coming Soon Modal — rendered at phone-frame level (z-[60], above drawer z-50) */}
+        {supportModalOpen && (
+          <ComingSoonModal onClose={closeSupportModal} />
+        )}
 
         {/* Profile Menu Popup Drawer inside the phone frame (routing-free) */}
         {isProfileOpen && (
