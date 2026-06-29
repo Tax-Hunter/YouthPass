@@ -1,4 +1,4 @@
-import useSWR from "swr";
+import { useQuery } from "@tanstack/react-query";
 import { mockDetail, MOCK_CARDS } from "./mock";
 
 const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK === "true";
@@ -78,12 +78,16 @@ export interface PolicyListResponse {
 const BASE = process.env.NEXT_PUBLIC_API_URL;
 
 export function usePolicyDetail(policyId: string | null) {
-  const { data, error, isLoading } = useSWR<PolicyDetailData>(
-    !USE_MOCK && policyId ? `${BASE}/policy/get/policy/${policyId}` : null,
-    fetcher,
-    { revalidateOnFocus: false, dedupingInterval: 60_000 }
-  );
-  if (USE_MOCK) return { policy: policyId ? mockDetail(policyId) : null, error: null, isLoading: false };
+  const { data, error, isLoading } = useQuery<PolicyDetailData>({
+    queryKey: ["policy", "detail", policyId],
+    queryFn: () => fetcher(`${BASE}/policy/get/policy/${policyId}`),
+    enabled: !USE_MOCK && !!policyId,
+    staleTime: 60_000,
+  });
+
+  if (USE_MOCK) {
+    return { policy: policyId ? mockDetail(policyId) : null, error: null, isLoading: false };
+  }
   return { policy: data ?? null, error: error ?? null, isLoading };
 }
 
@@ -111,13 +115,15 @@ export function usePolicyList(params: {
     if (params.applicable) query.set("applicable", "true");
   }
 
-  const key = params === null || USE_MOCK ? null : `${BASE}/policy/get/policies?${query.toString()}`;
+  const url = `${BASE}/policy/get/policies?${query.toString()}`;
 
-  const { data, error, isLoading } = useSWR<PolicyListResponse>(
-    key,
-    fetcher,
-    { revalidateOnFocus: false, dedupingInterval: 30_000 }
-  );
+  const { data, error, isLoading } = useQuery<PolicyListResponse>({
+    queryKey: ["policy", "list", params],
+    queryFn: () => fetcher(url),
+    enabled: params !== null && !USE_MOCK,
+    staleTime: 30_000,
+  });
+
   if (USE_MOCK) {
     if (params === null) return { data: null, error: null, isLoading: false };
     let items = MOCK_CARDS;
