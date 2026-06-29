@@ -5,27 +5,19 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import and_, or_
 from sqlalchemy.orm import Session
 
+from app.core.config import settings
 from app.db.session import get_db
 from app.db.models import Policy, PolicyStats, Code
 from app.schemas.policy import Eligibility, PolicyCard, PolicyDetail, PolicyListResponse
+from app.api.routes.policy.constants import (
+    APLY_PRD_CLOSED,
+    CATEGORY_FALLBACK,
+    RAW_PLACEHOLDERS,
+    REQ_NOLIMIT,
+    SIDO_LABELS,
+)
 
 router = APIRouter(prefix="/policy", tags=["policy"])
-
-# 신청기간구분 코드 (코드정의서) — 마감의 단일 진실
-APLY_PRD_ALWAYS = "0057002"   # 상시
-APLY_PRD_CLOSED = "0057003"   # 마감
-
-# category 미분류(NULL) 폴백 라벨
-CATEGORY_FALLBACK = "기타"
-
-# 신청 URL이 비었을 때 폴백할 온통청년 정책 상세 페이지
-YTH_DETAIL_URL_BASE = "https://www.youthcenter.go.kr/youthPolicy/ythPlcyTotalSearch/ythPlcyDetail"
-
-# raw_data 텍스트(정제 전 원본)의 placeholder → 정보 없음으로 간주
-RAW_PLACEHOLDERS = {
-    "-", ".", "해당없음", "해당 없음", "해당사항없음", "해당사항 없음",
-    "없음", "미정", "별도문의", "별도 문의", "n/a",
-}
 
 
 def _clean(value: Optional[str]) -> Optional[str]:
@@ -68,7 +60,7 @@ def _apply_url(aply_url_addr: Optional[str], plcy_no: str) -> str:
     # DB에 신청 URL이 있으면 그대로, 없으면 온통청년 정책 상세 페이지로 폴백
     if aply_url_addr and aply_url_addr.strip():
         return aply_url_addr
-    return f"{YTH_DETAIL_URL_BASE}/{plcy_no}"
+    return f"{settings.YTH_DETAIL_URL_BASE}/{plcy_no}"
 
 
 def _code_labels(db: Session, *codes: Optional[str]) -> dict:
@@ -78,13 +70,6 @@ def _code_labels(db: Session, *codes: Optional[str]) -> dict:
         return {}
     rows = db.query(Code.cd, Code.cd_nm).filter(Code.cd.in_(wanted)).all()
     return {cd: nm for cd, nm in rows}
-
-SIDO_LABELS = {
-    "11": "서울", "26": "부산", "27": "대구", "28": "인천", "29": "광주",
-    "30": "대전", "31": "울산", "36": "세종", "41": "경기", "43": "충북",
-    "44": "충남", "46": "전남", "47": "경북", "48": "경남", "50": "제주",
-    "51": "강원", "52": "전북",
-}
 
 
 def _region_label(is_nationwide: bool, region_sido: Optional[List[str]]) -> str:
@@ -132,15 +117,6 @@ def _age_label(
     if age_limit_yn:
         return "연령 조건 상세 확인"  # 제한 있다 표기됐으나 값 없음(모순) → 무관 단정 금지
     return "연령 무관"
-
-
-# 자격요건 raw_data 키 → 해당 그룹 '제한없음' cd (단독이면 표시 생략)
-REQ_NOLIMIT = {
-    "jobCd": "0013010",          # 취업상태
-    "schoolCd": "0049010",       # 학력
-    "plcyMajorCd": "0011009",    # 전공
-    "sbizCd": "0014010",         # 특화분야
-}
 
 
 def _income_label(

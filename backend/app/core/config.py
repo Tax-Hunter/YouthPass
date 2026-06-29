@@ -36,6 +36,8 @@ class Settings(BaseSettings):
 
     YOUTH_API_KEY: str = ""
     YOUTH_API_BASE_URL: str = "https://www.youthcenter.go.kr/opi/empInt.do"
+    # 신청 URL이 없을 때 폴백할 온통청년 정책 상세 페이지 베이스
+    YTH_DETAIL_URL_BASE: str = "https://www.youthcenter.go.kr/youthPolicy/ythPlcyTotalSearch/ythPlcyDetail"
 
     model_config = {"env_file": ".env", "case_sensitive": True}
 
