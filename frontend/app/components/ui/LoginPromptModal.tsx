@@ -8,7 +8,7 @@ interface LoginPromptModalProps {
 
 export default function LoginPromptModal({ onClose }: LoginPromptModalProps) {
   const handleLogin = () => {
-    window.location.href = `${process.env.NEXT_PUBLIC_API_URL}/auth/get/google-login`;
+    window.location.href = `${process.env.NEXT_PUBLIC_API_URL}/auth/get/google-login?redirect_origin=${encodeURIComponent(window.location.origin)}`;
   };
 
   return (

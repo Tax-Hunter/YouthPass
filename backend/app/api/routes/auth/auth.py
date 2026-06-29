@@ -1,3 +1,5 @@
+import base64
+import json
 import secrets
 from datetime import datetime, timedelta, timezone
 from typing import Optional
@@ -20,13 +22,28 @@ router = APIRouter()
 
 
 @router.get("/get/google-login")
-def google_login():
-    state = secrets.token_urlsafe(16)
+def google_login(redirect_origin: str = ""):
+    allowed = settings.allowed_origins_list
+    origin = redirect_origin if redirect_origin in allowed else settings.FRONTEND_URL
+    nonce = secrets.token_urlsafe(16)
+    state = base64.urlsafe_b64encode(
+        json.dumps({"nonce": nonce, "origin": origin}).encode()
+    ).decode().rstrip("=")
     return RedirectResponse(url=get_google_auth_url(state))
 
 
 @router.get("/get/google-callback")
-def google_callback(code: str, db: Session = Depends(get_db)):
+def google_callback(code: str, state: str = "", db: Session = Depends(get_db)):
+    # state에서 origin 추출 후 허용 목록 검증
+    try:
+        padding = 4 - len(state) % 4
+        payload = json.loads(base64.urlsafe_b64decode(state + "=" * (padding % 4)).decode())
+        origin = payload.get("origin", "")
+    except Exception:
+        origin = ""
+    allowed = settings.allowed_origins_list
+    frontend_url = origin if origin in allowed else settings.FRONTEND_URL
+
     # 1. code → Google access token 교환
     token_res = httpx.post(
         GOOGLE_TOKEN_URL,
@@ -85,7 +102,7 @@ def google_callback(code: str, db: Session = Depends(get_db)):
 
     # 5. 프론트엔드로 리다이렉트 (토큰 + 신규 여부)
     redirect_url = (
-        f"{settings.FRONTEND_URL}/auth/callback"
+        f"{frontend_url}/auth/callback"
         f"?access_token={access_token}"
         f"&refresh_token={raw_refresh_token}"
         f"&is_new_user={str(is_new_user).lower()}"
