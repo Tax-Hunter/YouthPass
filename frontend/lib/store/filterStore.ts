@@ -7,24 +7,42 @@ const DEFAULT_FILTERS: FilterState = {
   district: "전체",
   employment: "미취업",
   categories: {
-    주거: true,
-    금융: true,
+    주거: false,
+    금융: false,
     일자리: false,
     교육: false,
+    생활: false,
   },
+  keywords: [],
 }
 
 interface FilterStore {
   filters: FilterState
+  filterApplied: boolean
+  _hasHydrated: boolean
   saveFilters: (newFilters: FilterState) => void
+  setHasHydrated: (v: boolean) => void
 }
 
 export const useFilterStore = create<FilterStore>()(
   persist(
     (set) => ({
       filters: DEFAULT_FILTERS,
-      saveFilters: (newFilters) => set({ filters: newFilters }),
+      filterApplied: false,
+      _hasHydrated: false,
+      saveFilters: (newFilters) => set({ filters: newFilters, filterApplied: true }),
+      setHasHydrated: (v) => set({ _hasHydrated: v }),
     }),
-    { name: "youth-pass-filters" }
+    {
+      name: "youth-pass-filters",
+      onRehydrateStorage: () => (state) => {
+        state?.setHasHydrated(true)
+      },
+      merge: (persisted, current) => ({
+        ...current,
+        filters: { ...DEFAULT_FILTERS, ...(persisted as FilterStore).filters },
+        filterApplied: (persisted as FilterStore).filterApplied ?? false,
+      }),
+    }
   )
 )

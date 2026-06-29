@@ -29,6 +29,7 @@ export default function MobileLayout({ children }: Props) {
       "/bookmarks",
       "/search",
       "/location",
+      "/survey",
       "/filter",
       "/login",
       "/skeleton"
@@ -45,7 +46,7 @@ export default function MobileLayout({ children }: Props) {
   let isLocationHeader = false;
   let currentScreen: string | undefined = undefined;
 
-  if (pathname === "/filter") {
+  if (pathname === "/filter" || pathname === "/survey") {
     showHeader = false;
   } else if (pathname === "/location") {
     isLocationHeader = true;

@@ -2,11 +2,8 @@
 
 import React from "react";
 import { useRouter } from "next/navigation";
-import { policies } from "@/app/data/policies";
 import { useBookmarkStore } from "@/lib/store/bookmarkStore";
-import { useAuthStore } from "@/lib/store/authStore";
-import { useUiStore } from "@/lib/store/uiStore";
-import { useHydrated } from "@/lib/useHydrated";
+import { usePolicyList } from "@/lib/api/policy";
 import PolicyCard from "@/app/components/ui/PolicyCard";
 import PromoBanner from "@/app/components/ui/PromoBanner";
 
@@ -17,51 +14,40 @@ interface ScreenProps {
 export default function HomeScreen({ onNavigate }: ScreenProps) {
   const router = useRouter();
   const { toggle: toggleBookmark, isBookmarked } = useBookmarkStore();
-  const { user } = useAuthStore();
-  const { openLoginModal } = useUiStore();
-  const hydrated = useHydrated();
 
-  const handleLocationNavigate = () => {
-    if (!user) {
-      openLoginModal();
-      return;
-    }
-    onNavigate?.("location");
+  const handleSurveyNavigate = () => {
+    onNavigate?.("survey");
   };
 
-  // Get two ending-soon policies (e.g. D-3, D-5)
-  const dDayPolicies = policies.filter((p) => p.dDay.startsWith("D-"));
+  const { data, isLoading } = usePolicyList({ sort: "deadline", size: 4 });
 
-  const handleCardClick = (id: string) => {
-    // Standard multi-page transition or component trigger
-    if (onNavigate) {
-      onNavigate(`detail?id=${id}`);
-    }
+  const handleCardClick = (plcy_no: string) => {
+    onNavigate?.(`detail?id=${plcy_no}`);
   };
 
   return (
-    <div className="flex flex-col h-full bg-slate-50 text-slate-800 font-sans select-none overflow-y-auto pt-[76px]">
+    <div className="flex flex-col h-full bg-slate-50 text-slate-800 font-sans select-none overflow-y-auto pt-19">
       {/* Blue Hero Banner */}
       <div className="bg-blue-600 text-white px-6 pt-9 pb-8 flex flex-col items-start gap-4 shrink-0 shadow-inner relative overflow-hidden">
-        <div className="absolute top-[-50px] right-[-50px] w-40 h-40 bg-white/10 rounded-full blur-2xl" />
-        <div className="absolute bottom-[-30px] left-[-20px] w-28 h-28 bg-blue-500 rounded-full blur-xl" />
+        <div className="absolute -top-12.5 -right-12.5 w-40 h-40 bg-white/10 rounded-full blur-2xl" />
+        <div className="absolute -bottom-7.5 -left-5 w-28 h-28 bg-blue-500 rounded-full blur-xl" />
 
         <div className="relative z-10 space-y-2">
           <h2 className="text-[22px] font-bold leading-tight">
-            내게 꼭 맞는 청년 정책,<br />
+            내게 꼭 맞는 청년 정책,
+            <br />
             1분 만에 찾아보세요
           </h2>
           <p className="text-xs text-blue-100/90 leading-relaxed font-medium">
-            나이, 거주지, 관심 분야만 입력하면<br />
+            나이, 거주지, 관심 분야만 입력하면
+            <br />
             지금 바로 신청 가능한 지원금을 추천해드려요.
           </p>
         </div>
 
         <button
-          onClick={handleLocationNavigate}
-          onMouseEnter={() => {
-            if (user) router.prefetch("/location");
-          }}
+          onClick={handleSurveyNavigate}
+          onMouseEnter={() => router.prefetch("/survey")}
           className="relative z-10 px-5 py-2.5 bg-white text-blue-600 hover:bg-blue-50 text-[13px] font-bold rounded-xl shadow-md transition-all active:scale-[0.98]"
         >
           맞춤 정책 찾기
@@ -71,17 +57,15 @@ export default function HomeScreen({ onNavigate }: ScreenProps) {
       {/* Category Grid Section */}
       <section className="px-6 py-6 bg-white shrink-0 grid grid-cols-4 gap-3 border-b border-slate-100">
         {[
-          { id: "housing", label: "주거", icon: "home", color: "bg-blue-50 text-blue-600" },
-          { id: "finance", label: "금융", icon: "cash", color: "bg-teal-50 text-teal-600" },
-          { id: "job", label: "일자리", icon: "briefcase", color: "bg-indigo-50 text-indigo-600" },
-          { id: "education", label: "교육", icon: "academic", color: "bg-amber-50 text-amber-600" },
+          { label: "주거", icon: "home", color: "bg-blue-50 text-blue-600" },
+          { label: "금융", icon: "cash", color: "bg-teal-50 text-teal-600" },
+          { label: "일자리", icon: "briefcase", color: "bg-indigo-50 text-indigo-600" },
+          { label: "교육", icon: "academic", color: "bg-amber-50 text-amber-600" },
         ].map((cat) => (
           <button
-            key={cat.id}
+            key={cat.label}
             onClick={() => onNavigate?.("list")}
-            onMouseEnter={() => {
-              router.prefetch("/list");
-            }}
+            onMouseEnter={() => router.prefetch("/list")}
             className="flex flex-col items-center gap-2 p-1.5 rounded-xl hover:bg-slate-50 transition-colors active:scale-95"
           >
             <div className={`w-12 h-12 rounded-2xl ${cat.color} flex items-center justify-center`}>
@@ -116,11 +100,9 @@ export default function HomeScreen({ onNavigate }: ScreenProps) {
       <section className="px-6 py-6 flex-1">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-base font-bold text-slate-900">마감 임박 정책</h3>
-          <button 
+          <button
             onClick={() => onNavigate?.("list")}
-            onMouseEnter={() => {
-              router.prefetch("/list");
-            }}
+            onMouseEnter={() => router.prefetch("/list")}
             className="text-[11px] font-bold text-blue-600 hover:underline flex items-center gap-0.5"
           >
             전체보기
@@ -131,27 +113,46 @@ export default function HomeScreen({ onNavigate }: ScreenProps) {
         </div>
 
         <div className="space-y-4">
-          {dDayPolicies.map((policy) => (
-            <PolicyCard
-              key={policy.id}
-              policy={policy}
-              isBookmarked={hydrated && isBookmarked(policy.id)}
-              onToggleBookmark={() => toggleBookmark(policy.id)}
-              onClick={() => handleCardClick(policy.id)}
-              showCategory={true}
-              showLocation={true}
-              showActionText={false}
-            />
-          ))}
+          {isLoading ? (
+            Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="p-5 bg-white border border-slate-100 rounded-2xl animate-pulse">
+                <div className="flex justify-between mb-3">
+                  <div className="h-5 w-14 bg-slate-200 rounded-full" />
+                  <div className="h-5 w-10 bg-slate-200 rounded-full" />
+                </div>
+                <div className="space-y-2">
+                  <div className="h-4 bg-slate-200 rounded-md w-11/12" />
+                  <div className="h-3 bg-slate-200 rounded-md w-7/12" />
+                </div>
+              </div>
+            ))
+          ) : (
+            (data?.items ?? []).map((policy) => (
+              <PolicyCard
+                key={policy.plcy_no}
+                policy={policy}
+                isBookmarked={isBookmarked(policy.plcy_no)}
+                onToggleBookmark={() => toggleBookmark(policy.plcy_no)}
+                onClick={() => handleCardClick(policy.plcy_no)}
+                showCategory={true}
+                showLocation={true}
+                showActionText={false}
+              />
+            ))
+          )}
         </div>
 
-        {/* Promo Notification */}
         <PromoBanner
           className="mt-6"
-          title={<span className="text-[9px] font-bold text-blue-600 tracking-wider">오늘의 정책 알림</span>}
+          title={
+            <span className="text-[9px] font-bold text-blue-600 tracking-wider">
+              오늘의 정책 알림
+            </span>
+          }
           subtitle={
             <h5 className="text-[12.5px] font-bold text-slate-800 leading-tight">
-              이미 24,102명의 청년들이<br />
+              이미 24,102명의 청년들이
+              <br />
               자신의 혜택을 챙겼어요
             </h5>
           }
@@ -162,11 +163,12 @@ export default function HomeScreen({ onNavigate }: ScreenProps) {
                 "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=64&q=80",
                 "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=64&q=80",
               ].map((url, i) => (
+                // eslint-disable-next-line @next/next/no-img-element
                 <img
                   key={i}
                   className="inline-block h-7 w-7 rounded-full ring-2 ring-white object-cover"
                   src={url}
-                  alt="user avatar"
+                  alt=""
                 />
               ))}
               <div className="inline-flex items-center justify-center h-7 w-7 rounded-full bg-blue-100 text-blue-600 ring-2 ring-white text-[9px] font-bold font-mono">
@@ -176,7 +178,6 @@ export default function HomeScreen({ onNavigate }: ScreenProps) {
           }
         />
       </section>
-
     </div>
   );
 }

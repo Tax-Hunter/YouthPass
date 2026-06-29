@@ -1,0 +1,121 @@
+import type { PolicyCardData, PolicyDetailData, PolicyListResponse } from "./policy";
+
+export const MOCK_DETAIL: PolicyDetailData = {
+  plcy_no: "R2024010000001",
+  plcy_nm: "청년 월세 한시 특별지원",
+  category: "주거",
+  lclsf_nm: "주거비 지원",
+  mclsf_nm: "월세",
+  plcy_expln_cn:
+    "독립 거주 청년을 대상으로 월세를 최대 20만 원씩 최장 12개월 지원하는 사업입니다.\n만 19~34세, 기준 중위소득 60% 이하 무주택 청년이면 신청 가능합니다.",
+  plcy_sprt_cn: "월 최대 20만 원 × 최장 12개월 (총 240만 원)",
+  region: "전국 공통",
+  region_sido: [],
+  is_nationwide: true,
+  keywords: ["월세", "주거", "청년"],
+  sprt_trgt_min_age: 19,
+  sprt_trgt_max_age: 34,
+  earn_cnd_se_cd: "중위60",
+  earn_min_amt: null,
+  earn_max_amt: null,
+  mrg_stts_cd: null,
+  aply_prd_se_cd: "기간",
+  is_always_open: false,
+  apply_start_date: "2025-01-02",
+  apply_end_date: "2026-12-31",
+  dday: "D-185",
+  days: 185,
+  sprvsn_inst_cd_nm: "국토교통부",
+  aply_url_addr: "https://apply.lh.or.kr",
+  views: 1240,
+  frst_reg_dt: "2024-01-10T00:00:00",
+  last_mdfcn_dt: "2025-03-01T00:00:00",
+};
+
+export const MOCK_CARDS: PolicyCardData[] = [
+  {
+    plcy_no: "R2024010000001",
+    plcy_nm: "청년 월세 한시 특별지원",
+    category: "주거",
+    region: "전국 공통",
+    summary: "독립 거주 청년에게 월 최대 20만 원, 최장 12개월 지원",
+    dday: "D-185",
+    days: 185,
+    views: 1240,
+    is_always_open: false,
+    apply_end_date: "2026-12-31",
+  },
+  {
+    plcy_no: "R2024020000002",
+    plcy_nm: "청년도약계좌",
+    category: "금융",
+    region: "전국 공통",
+    summary: "매월 최대 70만 원 납입 시 정부기여금 최대 6% 추가 적립",
+    dday: "D-7",
+    days: 7,
+    views: 3420,
+    is_always_open: false,
+    apply_end_date: "2026-07-06",
+  },
+  {
+    plcy_no: "R2024030000003",
+    plcy_nm: "국민취업지원제도 1유형",
+    category: "일자리",
+    region: "전국 공통",
+    summary: "구직촉진수당 월 50만 원 × 6개월 + 취업활동 비용 지원",
+    dday: "상시모집",
+    days: null,
+    views: 890,
+    is_always_open: true,
+    apply_end_date: null,
+  },
+  {
+    plcy_no: "R2024040000004",
+    plcy_nm: "서울형 청년 일자리 도약 장려금",
+    category: "일자리",
+    region: "서울",
+    summary: "중소기업 취업 청년에게 최대 200만 원 장려금 지원",
+    dday: "D-42",
+    days: 42,
+    views: 567,
+    is_always_open: false,
+    apply_end_date: "2026-08-10",
+  },
+  {
+    plcy_no: "R2024050000005",
+    plcy_nm: "청년내일저축계좌",
+    category: "금융",
+    region: "전국 공통",
+    summary: "3년 만기 시 정부지원금 포함 최대 1,440만 원 수령",
+    dday: "마감",
+    days: -3,
+    views: 2100,
+    is_always_open: false,
+    apply_end_date: "2026-06-26",
+  },
+];
+
+export const MOCK_LIST: PolicyListResponse = {
+  total: MOCK_CARDS.length,
+  page: 1,
+  size: 20,
+  items: MOCK_CARDS,
+};
+
+export function mockDetail(policyId: string): PolicyDetailData {
+  const found = MOCK_CARDS.find((c) => c.plcy_no === policyId);
+  if (!found) return MOCK_DETAIL;
+  return {
+    ...MOCK_DETAIL,
+    plcy_no: found.plcy_no,
+    plcy_nm: found.plcy_nm,
+    category: found.category,
+    region: found.region,
+    plcy_expln_cn: found.summary,
+    dday: found.dday,
+    days: found.days,
+    views: found.views,
+    is_always_open: found.is_always_open,
+    apply_end_date: found.apply_end_date,
+  };
+}

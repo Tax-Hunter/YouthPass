@@ -1,11 +1,11 @@
 "use client";
 
 import React from "react";
-import { Policy } from "@/app/data/policies";
+import { PolicyCardData } from "@/lib/api/policy";
 import Badge from "./Badge";
 
 interface PolicyCardProps {
-  policy: Policy;
+  policy: PolicyCardData;
   isBookmarked: boolean;
   onToggleBookmark: () => void;
   onClick: () => void;
@@ -23,7 +23,7 @@ export default function PolicyCard({
   showLocation = true,
   showActionText = false,
 }: PolicyCardProps) {
-  const isDdayUrgent = policy.dDay.startsWith("D-");
+  const isDdayUrgent = policy.dday.startsWith("D-");
 
   return (
     <div
@@ -36,13 +36,13 @@ export default function PolicyCard({
           <div className="flex items-center gap-1.5">
             {showCategory && (
               <Badge variant="primary" size="sm">
-                {policy.category}
+                {policy.category ?? "기타"}
               </Badge>
             )}
           </div>
           <div className="flex items-center gap-2">
             <Badge variant={isDdayUrgent ? "danger" : "primary"} size="sm">
-              {policy.dDay}
+              {policy.dday}
             </Badge>
             <button
               onClick={(e) => {
@@ -64,13 +64,15 @@ export default function PolicyCard({
 
         {/* Title */}
         <h4 className="font-bold text-[14.5px] text-slate-900 group-hover:text-blue-600 transition-colors leading-snug">
-          {policy.title}
+          {policy.plcy_nm}
         </h4>
 
         {/* Description */}
-        <p className="text-xs text-slate-500 mt-1.5 font-medium leading-relaxed">
-          {policy.description}
-        </p>
+        {policy.summary && (
+          <p className="text-xs text-slate-500 mt-1.5 font-medium leading-relaxed line-clamp-2">
+            {policy.summary}
+          </p>
+        )}
       </div>
 
       {/* Footer */}
@@ -82,7 +84,7 @@ export default function PolicyCard({
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
               </svg>
-              {policy.location}
+              {policy.region}
             </div>
           ) : (
             <div />
