@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useBookmarkStore } from "@/lib/store/bookmarkStore";
 import { useAuthStore } from "@/lib/store/authStore";
+import { useFilterStore } from "@/lib/store/filterStore";
 import { useLogout } from "@/lib/useLogout";
 
 interface ScreenProps {
@@ -15,9 +16,16 @@ export default function MyPageScreen({ onNavigate }: ScreenProps) {
   const [alertsEnabled, setAlertsEnabled] = useState(true);
   const { bookmarks } = useBookmarkStore();
   const { user, isLoading } = useAuthStore();
+  const { filters } = useFilterStore();
   const { logout, isLoggingOut } = useLogout({
     onSuccess: () => router.replace("/home"),
   });
+
+  const filterBadges = [
+    filters.age != null ? `만 ${filters.age}세` : null,
+    filters.city && filters.city !== "전국" ? filters.city : null,
+    filters.employment || null,
+  ].filter(Boolean) as string[];
 
   const displayName = isLoading
     ? null
@@ -31,7 +39,7 @@ export default function MyPageScreen({ onNavigate }: ScreenProps) {
 
   return (
     <div className="flex flex-col h-full bg-white text-slate-800 font-sans select-none overflow-hidden">
-      <div className="flex-1 overflow-y-auto min-h-[450px] flex flex-col pt-[76px]">
+      <div className="flex-1 overflow-y-auto min-h-112.5 flex flex-col pt-19">
       {/* Main Profile Header */}
       <div className="px-6 py-6 flex items-center gap-4 shrink-0">
         <div className="w-16 h-16 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-400 overflow-hidden">
@@ -112,22 +120,26 @@ export default function MyPageScreen({ onNavigate }: ScreenProps) {
 
       {/* User filter status capsules */}
       <div className="px-6 py-6 flex flex-wrap gap-2 shrink-0 border-b border-slate-50">
-        {["만 25세", "마포구", "미취업"].map((badge) => (
-          <span
-            key={badge}
-            className="px-3.5 py-1.5 bg-slate-100 text-slate-600 rounded-xl text-xs font-bold"
-          >
-            {badge}
-          </span>
-        ))}
+        {filterBadges.length > 0 ? (
+          filterBadges.map((badge) => (
+            <span
+              key={badge}
+              className="px-3.5 py-1.5 bg-slate-100 text-slate-600 rounded-xl text-xs font-bold"
+            >
+              {badge}
+            </span>
+          ))
+        ) : (
+          <span className="text-xs text-slate-400 font-semibold">설문을 완료하면 조건이 표시됩니다</span>
+        )}
       </div>
 
       {/* Survey modification action button */}
       <div className="px-6 py-4 shrink-0">
         <button
-          onClick={() => onNavigate?.("location")}
+          onClick={() => onNavigate?.("survey")}
           onMouseEnter={() => {
-            router.prefetch("/location");
+            router.prefetch("/survey");
           }}
           className="w-full py-3.5 bg-white border border-slate-200 hover:border-blue-500 rounded-xl text-xs font-bold text-slate-500 hover:text-blue-600 transition-colors active:scale-98"
         >
