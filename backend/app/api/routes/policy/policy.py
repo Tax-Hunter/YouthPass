@@ -5,18 +5,71 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import and_, or_
 from sqlalchemy.orm import Session
 
+from app.core.config import settings
 from app.db.session import get_db
-from app.db.models import Policy
-from app.schemas.policy import PolicyCard, PolicyDetail, PolicyListResponse
+from app.db.models import Policy, PolicyStats, Code
+from app.schemas.policy import Eligibility, PolicyCard, PolicyDetail, PolicyListResponse
+from app.api.routes.policy.constants import (
+    APLY_PRD_CLOSED,
+    CATEGORY_FALLBACK,
+    RAW_PLACEHOLDERS,
+    REQ_NOLIMIT,
+    SIDO_LABELS,
+)
 
 router = APIRouter(prefix="/policy", tags=["policy"])
 
-SIDO_LABELS = {
-    "11": "서울", "26": "부산", "27": "대구", "28": "인천", "29": "광주",
-    "30": "대전", "31": "울산", "36": "세종", "41": "경기", "43": "충북",
-    "44": "충남", "46": "전남", "47": "경북", "48": "경남", "50": "제주",
-    "51": "강원", "52": "전북",
-}
+
+def _clean(value: Optional[str]) -> Optional[str]:
+    # raw_data 원문에서 빈값/placeholder는 None으로
+    if not value:
+        return None
+    v = value.strip()
+    return v if v and v.lower() not in RAW_PLACEHOLDERS else None
+
+
+def _norm_url(value: Optional[str]) -> Optional[str]:
+    # 참고 URL에 스킴 없으면 https:// 보정
+    u = _clean(value)
+    if not u:
+        return None
+    return u if u.lower().startswith("http") else f"https://{u}"
+
+
+def _fmt_ymd(value: Optional[str]) -> Optional[str]:
+    # "20260918" → "2026.09.18"
+    s = _clean(value)
+    if not s or len(s) != 8 or not s.isdigit():
+        return None
+    return f"{s[:4]}.{s[4:6]}.{s[6:]}"
+
+
+def _biz_period(bgn: Optional[str], end: Optional[str]) -> Optional[str]:
+    b = _fmt_ymd(bgn)
+    e = "별도 공고" if _clean(end) == "29991231" else _fmt_ymd(end)
+    if b and e:
+        return f"{b} ~ {e}"
+    if b:
+        return f"{b} ~"
+    if e:
+        return f"~ {e}"
+    return None
+
+
+def _apply_url(aply_url_addr: Optional[str], plcy_no: str) -> str:
+    # DB에 신청 URL이 있으면 그대로, 없으면 온통청년 정책 상세 페이지로 폴백
+    if aply_url_addr and aply_url_addr.strip():
+        return aply_url_addr
+    return f"{settings.YTH_DETAIL_URL_BASE}/{plcy_no}"
+
+
+def _code_labels(db: Session, *codes: Optional[str]) -> dict:
+    # 주어진 코드값들의 한글 라벨을 code 테이블에서 조회 (미정의/미적재 시 키 없음)
+    wanted = {c for c in codes if c}
+    if not wanted:
+        return {}
+    rows = db.query(Code.cd, Code.cd_nm).filter(Code.cd.in_(wanted)).all()
+    return {cd: nm for cd, nm in rows}
 
 
 def _region_label(is_nationwide: bool, region_sido: Optional[List[str]]) -> str:
@@ -30,7 +83,14 @@ def _region_label(is_nationwide: bool, region_sido: Optional[List[str]]) -> str:
     return f"{labels[0]} 외 {len(labels) - 1}곳"
 
 
-def _dday(is_always_open: bool, apply_end_date: Optional[date]) -> Tuple[str, Optional[int]]:
+def _dday(
+    aply_prd_se_cd: Optional[str],
+    is_always_open: bool,
+    apply_end_date: Optional[date],
+) -> Tuple[str, Optional[int]]:
+    # 마감코드(0057003)를 최우선 판정 — is_always_open 재오염(마감인데 TRUE)에도 방어
+    if aply_prd_se_cd == APLY_PRD_CLOSED:
+        return "마감", None
     if is_always_open:
         return "상시모집", None
     if apply_end_date is None:
@@ -41,21 +101,79 @@ def _dday(is_always_open: bool, apply_end_date: Optional[date]) -> Tuple[str, Op
     return f"D-{days}", days
 
 
-def _to_card(p: Policy) -> PolicyCard:
-    label, days = _dday(p.is_always_open, p.apply_end_date)
+def _age_label(
+    min_age: Optional[int],
+    max_age: Optional[int],
+    age_limit_yn: Optional[bool],
+) -> str:
+    # 연령 표시 폴백 4분기: 범위 / 한쪽 경계 / 무관 / 확인필요
+    if min_age is not None and max_age is not None:
+        return f"만 {min_age}~{max_age}세"
+    if min_age is not None:
+        return f"만 {min_age}세 이상"
+    if max_age is not None:
+        return f"만 {max_age}세 이하"
+    # 연령값 양쪽 없음 — 제한여부로 분기
+    if age_limit_yn:
+        return "연령 조건 상세 확인"  # 제한 있다 표기됐으나 값 없음(모순) → 무관 단정 금지
+    return "연령 무관"
+
+
+def _income_label(
+    cd: Optional[str], min_amt: Optional[int], max_amt: Optional[int], earn_etc: Optional[str]
+) -> Optional[str]:
+    if cd is None:
+        return None
+    if cd == "0043001":  # 소득 무관
+        return "소득 무관"
+    etc = _clean(earn_etc)
+    if cd == "0043002":  # 연소득
+        if max_amt:
+            if min_amt:
+                return f"연소득 {min_amt:,}~{max_amt:,}만원"
+            return f"연소득 {max_amt:,}만원 이하"
+        return etc or "연소득 조건 있음"
+    # 0043003 기타
+    return etc or "기타 소득조건"
+
+
+def _req_label(code_map: dict, raw_value: Optional[str], nolimit_cd: str) -> Optional[str]:
+    # 콤마 다중 코드 → 라벨. 제한없음 단독/미매핑이면 None
+    if not raw_value or not str(raw_value).strip():
+        return None
+    cds = [c.strip() for c in str(raw_value).split(",") if c.strip() and c.strip() != nolimit_cd]
+    labels = [code_map[c] for c in cds if c in code_map]
+    return ", ".join(labels) if labels else None
+
+
+def _compose_target(e: Eligibility) -> str:
+    # None 아닌 항목만 "• 라벨: 값" 줄로 조합
+    rows = [
+        ("연령", e.age), ("거주지역", e.region), ("소득", e.income), ("혼인", e.marriage),
+        ("취업상태", e.job), ("학력", e.education), ("전공", e.major),
+        ("특화분야", e.specialization), ("추가 자격", e.additional),
+    ]
+    return "\n".join(f"• {k}: {v}" for k, v in rows if v)
+
+
+def _to_card(p: Policy, inq_cnt: Optional[int] = None) -> PolicyCard:
+    label, days = _dday(p.aply_prd_se_cd, p.is_always_open, p.apply_end_date)
     return PolicyCard(
         plcy_no=p.plcy_no,
         plcy_nm=p.plcy_nm,
-        category=p.category,
+        category=p.category or CATEGORY_FALLBACK,
+        keywords=p.keywords or [],
         region=_region_label(p.is_nationwide, p.region_sido),
         org=p.sprvsn_inst_cd_nm,
         summary=p.plcy_expln_cn or p.plcy_sprt_cn,
         benefit=p.plcy_sprt_cn or p.plcy_expln_cn,
+        age_label=_age_label(p.sprt_trgt_min_age, p.sprt_trgt_max_age, p.age_limit_yn),
         dday=label,
         days=days,
-        views=0,
+        views=inq_cnt or 0,
         is_always_open=p.is_always_open,
         apply_end_date=p.apply_end_date,
+        aply_url_addr=_apply_url(p.aply_url_addr, p.plcy_no),
     )
 
 
@@ -71,7 +189,11 @@ def list_policies(
     page: int = Query(default=1, ge=1),
     size: int = Query(default=20, ge=1, le=100),
 ):
-    q = db.query(Policy).filter(Policy.is_active.is_(True))
+    q = (
+        db.query(Policy, PolicyStats.inq_cnt)
+        .outerjoin(PolicyStats, PolicyStats.plcy_no == Policy.plcy_no)
+        .filter(Policy.is_active.is_(True))
+    )
 
     if category:
         q = q.filter(Policy.category.in_(category))
@@ -86,16 +208,20 @@ def list_policies(
             or_(Policy.sprt_trgt_max_age.is_(None), Policy.sprt_trgt_max_age >= age),
         ))
     if applicable:
-        q = q.filter(or_(
-            Policy.is_always_open.is_(True),
-            Policy.apply_end_date.is_(None),
-            Policy.apply_end_date >= date.today(),
-        ))
+        # 마감(0057003) 제외 후, 상시 OR 마감일 미상 OR 마감 전
+        q = q.filter(
+            Policy.aply_prd_se_cd != APLY_PRD_CLOSED,
+            or_(
+                Policy.is_always_open.is_(True),
+                Policy.apply_end_date.is_(None),
+                Policy.apply_end_date >= date.today(),
+            ),
+        )
 
     total = q.count()
 
     if sort == "popular":
-        q = q.order_by(Policy.plcy_no.desc())
+        q = q.order_by(PolicyStats.inq_cnt.desc().nullslast(), Policy.plcy_no.desc())
     elif sort == "deadline":
         q = q.order_by(Policy.apply_end_date.asc().nullslast(), Policy.plcy_no.desc())
     else:
@@ -103,43 +229,93 @@ def list_policies(
 
     rows = q.offset((page - 1) * size).limit(size).all()
     return PolicyListResponse(
-        total=total, page=page, size=size, items=[_to_card(p) for p in rows]
+        total=total, page=page, size=size,
+        items=[_to_card(p, inq_cnt) for p, inq_cnt in rows],
     )
 
 
 @router.get("/get/policy/{policy_id}", response_model=PolicyDetail)
 def get_policy(policy_id: str, db: Session = Depends(get_db)):
-    p = db.get(Policy, policy_id)
-    if p is None:
+    row = (
+        db.query(Policy, PolicyStats.inq_cnt)
+        .outerjoin(PolicyStats, PolicyStats.plcy_no == Policy.plcy_no)
+        .filter(Policy.plcy_no == policy_id)
+        .first()
+    )
+    if row is None:
         raise HTTPException(status_code=404, detail="policy not found")
-    label, days = _dday(p.is_always_open, p.apply_end_date)
+    p, inq_cnt = row
+    label, days = _dday(p.aply_prd_se_cd, p.is_always_open, p.apply_end_date)
+    age_label = _age_label(p.sprt_trgt_min_age, p.sprt_trgt_max_age, p.age_limit_yn)
+    region_label = _region_label(p.is_nationwide, p.region_sido)
+
+    # 자격요건 코드(raw_data 보존분) + 단일값 코드 라벨을 1쿼리로 조회
+    raw = p.raw_data or {}
+    req_raw = {k: raw.get(k) for k in REQ_NOLIMIT}
+    req_cds = [
+        c.strip()
+        for v in req_raw.values() if v
+        for c in str(v).split(",") if c.strip()
+    ]
+    labels = _code_labels(db, p.earn_cnd_se_cd, p.mrg_stts_cd, p.aply_prd_se_cd, *req_cds)
+
+    eligibility = Eligibility(
+        age=age_label,
+        region=region_label,
+        income=_income_label(p.earn_cnd_se_cd, p.earn_min_amt, p.earn_max_amt, raw.get("earnEtcCn")),
+        marriage=(labels.get(p.mrg_stts_cd) if p.mrg_stts_cd and p.mrg_stts_cd != "0055003" else None),
+        job=_req_label(labels, req_raw["jobCd"], REQ_NOLIMIT["jobCd"]),
+        education=_req_label(labels, req_raw["schoolCd"], REQ_NOLIMIT["schoolCd"]),
+        major=_req_label(labels, req_raw["plcyMajorCd"], REQ_NOLIMIT["plcyMajorCd"]),
+        specialization=_req_label(labels, req_raw["sbizCd"], REQ_NOLIMIT["sbizCd"]),
+        additional=_clean(raw.get("addAplyQlfcCndCn")),
+    )
+    target = _compose_target(eligibility)
+
+    ref_urls = [u for u in (_norm_url(raw.get("refUrlAddr1")), _norm_url(raw.get("refUrlAddr2"))) if u]
+    contact = _clean(raw.get("sprvsnInstPicNm")) or _clean(raw.get("operInstPicNm"))
+
     return PolicyDetail(
         plcy_no=p.plcy_no,
         plcy_nm=p.plcy_nm,
-        category=p.category,
+        category=p.category or CATEGORY_FALLBACK,
         lclsf_nm=p.lclsf_nm,
         mclsf_nm=p.mclsf_nm,
         plcy_expln_cn=p.plcy_expln_cn,
         plcy_sprt_cn=p.plcy_sprt_cn,
-        region=_region_label(p.is_nationwide, p.region_sido),
+        region=region_label,
         region_sido=p.region_sido or [],
         is_nationwide=p.is_nationwide,
         keywords=p.keywords or [],
         sprt_trgt_min_age=p.sprt_trgt_min_age,
         sprt_trgt_max_age=p.sprt_trgt_max_age,
+        age_label=age_label,
         earn_cnd_se_cd=p.earn_cnd_se_cd,
+        earn_cnd_se_nm=labels.get(p.earn_cnd_se_cd),
         earn_min_amt=p.earn_min_amt,
         earn_max_amt=p.earn_max_amt,
         mrg_stts_cd=p.mrg_stts_cd,
+        mrg_stts_nm=labels.get(p.mrg_stts_cd),
         aply_prd_se_cd=p.aply_prd_se_cd,
+        aply_prd_se_nm=labels.get(p.aply_prd_se_cd),
         is_always_open=p.is_always_open,
         apply_start_date=p.apply_start_date,
         apply_end_date=p.apply_end_date,
         dday=label,
         days=days,
         sprvsn_inst_cd_nm=p.sprvsn_inst_cd_nm,
-        aply_url_addr=p.aply_url_addr,
-        views=0,
+        aply_url_addr=_apply_url(p.aply_url_addr, p.plcy_no),
+        views=inq_cnt or 0,
         frst_reg_dt=p.frst_reg_dt,
         last_mdfcn_dt=p.last_mdfcn_dt,
+        eligibility=eligibility,
+        target=target,
+        apply_method=_clean(raw.get("plcyAplyMthdCn")),
+        documents=_clean(raw.get("sbmsnDcmntCn")),
+        screening=_clean(raw.get("srngMthdCn")),
+        etc_notes=_clean(raw.get("etcMttrCn")),
+        oper_inst_nm=_clean(raw.get("operInstCdNm")),
+        contact=contact,
+        ref_urls=ref_urls,
+        biz_period=_biz_period(raw.get("bizPrdBgngYmd"), raw.get("bizPrdEndYmd")),
     )
