@@ -35,7 +35,8 @@ class Settings(BaseSettings):
         return self
 
     YOUTH_API_KEY: str = ""
-    YOUTH_API_BASE_URL: str = "https://www.youthcenter.go.kr/opi/empInt.do"
+    # 온통청년 getPlcy 현행 엔드포인트 (수집 파이프라인 client가 사용). 구 opi/empInt.do에서 교정.
+    YOUTH_API_BASE_URL: str = "https://www.youthcenter.go.kr/go/ythip/getPlcy"
     # 신청 URL이 없을 때 폴백할 온통청년 정책 상세 페이지 베이스
     YTH_DETAIL_URL_BASE: str = "https://www.youthcenter.go.kr/youthPolicy/ythPlcyTotalSearch/ythPlcyDetail"
 
