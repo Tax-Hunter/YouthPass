@@ -14,10 +14,8 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.db.session import SessionLocal
+from ingest.config import LOAD_LOCK_KEY
 from ingest.errors import IngestError
-
-# youthpass ingest(#10) 적재 전용 고정 락 키 (다른 advisory lock과 충돌 없는 임의 bigint)
-LOAD_LOCK_KEY = 0x59503130  # "YP10"
 
 
 class IngestLockError(IngestError):
