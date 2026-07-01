@@ -15,10 +15,9 @@ from sqlalchemy.orm import Session
 
 from app.db.session import SessionLocal
 from ingest.config import LOAD_LOCK_KEY
-from ingest.errors import IngestError
 
 
-class IngestLockError(IngestError):
+class IngestLockError(Exception):
     """다른 적재 실행이 advisory lock을 점유 중 — 동시실행 차단."""
 
     def __init__(self, message, *, key=None):

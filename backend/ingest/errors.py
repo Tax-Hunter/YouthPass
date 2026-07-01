@@ -1,4 +1,4 @@
-"""수집 파이프라인 예외 계층.
+"""수집 파이프라인 예외.
 
 각 예외는 메시지 외에 상황별 구조화 필드를 옵션(keyword)으로 싣는다(없으면 None).
 필드는 상위 핸들러가 프로그램적으로 분기·로깅할 때 쓴다(예: status_code로 재시도 판단).
@@ -6,11 +6,7 @@
 """
 
 
-class IngestError(Exception):
-    """수집 파이프라인 공통 예외."""
-
-
-class IngestConfigError(IngestError):
+class IngestConfigError(Exception):
     """인증키 등 사전조건 위반 — 네트워크 호출 전 즉시 실패."""
 
     def __init__(self, message, *, field=None):
@@ -18,7 +14,7 @@ class IngestConfigError(IngestError):
         self.field = field           # 문제된 설정 키 (예: "YOUTH_API_KEY")
 
 
-class IngestFetchError(IngestError):
+class IngestFetchError(Exception):
     """네트워크/HTTP/응답 스키마 실패 — 재시도 소진 또는 회복 불가."""
 
     def __init__(self, message, *, status_code=None, url=None, attempt=None):

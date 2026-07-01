@@ -16,14 +16,13 @@ from app.api.routes.policy.constants import (
     APLY_PRD_CLOSED,
     SIDO_LABELS,
 )
-from ingest.errors import IngestError
 from ingest.vocab import CATEGORY_VOCAB, KEYWORD_VOCAB
 
 VALID_SIDO = frozenset(SIDO_LABELS.keys())
 _CATSET = frozenset(CATEGORY_VOCAB)
 
 
-class IngestValidationError(IngestError):
+class IngestValidationError(Exception):
     """검증 FAIL — 적재 차단."""
 
     def __init__(self, message, *, fails=None):
