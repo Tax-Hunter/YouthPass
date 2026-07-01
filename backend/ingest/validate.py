@@ -26,6 +26,10 @@ _CATSET = frozenset(CATEGORY_VOCAB)
 class IngestValidationError(IngestError):
     """검증 FAIL — 적재 차단."""
 
+    def __init__(self, message, *, fails=None):
+        super().__init__(message)
+        self.fails = fails or []     # 실패한 Issue 리스트 (구조화 리포트·알림용)
+
 
 @dataclass
 class Issue:
@@ -129,4 +133,4 @@ def assert_loadable(report: ValidationReport) -> None:
     """can_load=False면 적재를 막는다."""
     if not report.can_load:
         names = ", ".join(f"{i.check}({i.count})" for i in report.fails)
-        raise IngestValidationError(f"검증 FAIL로 적재 차단: {names}")
+        raise IngestValidationError(f"검증 FAIL로 적재 차단: {names}", fails=report.fails)

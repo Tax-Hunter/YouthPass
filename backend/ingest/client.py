@@ -44,13 +44,13 @@ class FetchMeta:
 def _validate_api_key(api_key: Optional[str]) -> str:
     """빈값/템플릿잔여/비ASCII를 네트워크 호출 전 차단."""
     if not api_key or not api_key.strip():
-        raise IngestConfigError("YOUTH_API_KEY 미설정")
+        raise IngestConfigError("YOUTH_API_KEY 미설정", field="YOUTH_API_KEY")
     key = api_key.strip()
     low = key.lower()
     if any(h in low for h in TEMPLATE_HINTS):
-        raise IngestConfigError(f"YOUTH_API_KEY가 템플릿 값으로 보임: {key[:12]}…")
+        raise IngestConfigError(f"YOUTH_API_KEY가 템플릿 값으로 보임: {key[:12]}…", field="YOUTH_API_KEY")
     if not key.isascii():
-        raise IngestConfigError("YOUTH_API_KEY에 비ASCII 문자 포함(템플릿 잔여 의심)")
+        raise IngestConfigError("YOUTH_API_KEY에 비ASCII 문자 포함(템플릿 잔여 의심)", field="YOUTH_API_KEY")
     return key
 
 
@@ -88,12 +88,19 @@ def _fetch_page(client: httpx.Client, api_key: str, page_num: int, page_size: in
             r = client.get(settings.YOUTH_API_BASE_URL, params=params, headers=BROWSER_HEADERS, timeout=TIMEOUT_SEC)
             if r.status_code == 200:
                 return _extract(r.json())
-            last_err = IngestFetchError(f"HTTP {r.status_code}: {r.text[:120]}")
+            last_err = IngestFetchError(
+                f"HTTP {r.status_code}: {r.text[:120]}",
+                status_code=r.status_code, url=settings.YOUTH_API_BASE_URL, attempt=attempt,
+            )
         except (httpx.HTTPError, ValueError) as e:
             last_err = e
         if attempt < RETRY_COUNT:
             time.sleep(RETRY_BACKOFF_SEC * attempt)
-    raise IngestFetchError(f"페이지 {page_num} 수집 실패(재시도 {RETRY_COUNT}회 소진): {last_err}")
+    raise IngestFetchError(
+        f"페이지 {page_num} 수집 실패(재시도 {RETRY_COUNT}회 소진): {last_err}",
+        status_code=getattr(last_err, "status_code", None),
+        url=settings.YOUTH_API_BASE_URL, attempt=RETRY_COUNT,
+    )
 
 
 def fetch_all_policies(

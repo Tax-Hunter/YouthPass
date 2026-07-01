@@ -21,6 +21,10 @@ from ingest.errors import IngestError
 class IngestLockError(IngestError):
     """다른 적재 실행이 advisory lock을 점유 중 — 동시실행 차단."""
 
+    def __init__(self, message, *, key=None):
+        super().__init__(message)
+        self.key = key               # 점유 중인 advisory lock 키
+
 
 @contextmanager
 def advisory_lock(key: int = LOAD_LOCK_KEY, *, session: Optional[Session] = None) -> Iterator[None]:
@@ -36,7 +40,7 @@ def advisory_lock(key: int = LOAD_LOCK_KEY, *, session: Optional[Session] = None
     if not got:
         if own:
             db.close()
-        raise IngestLockError(f"이미 실행 중인 적재가 lock을 점유 중 — 동시실행 차단(key={key})")
+        raise IngestLockError(f"이미 실행 중인 적재가 lock을 점유 중 — 동시실행 차단(key={key})", key=key)
     try:
         yield
     finally:
