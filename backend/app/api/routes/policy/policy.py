@@ -2,7 +2,7 @@ from datetime import date
 from typing import List, Optional, Tuple
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import and_, or_
+from sqlalchemy import and_, func, or_
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
@@ -12,6 +12,7 @@ from app.schemas.policy import Eligibility, PolicyCard, PolicyDetail, PolicyList
 from app.api.routes.policy.constants import (
     APLY_PRD_CLOSED,
     CATEGORY_FALLBACK,
+    CODE_FILTERS,
     RAW_PLACEHOLDERS,
     REQ_NOLIMIT,
     SIDO_LABELS,
@@ -20,16 +21,15 @@ from app.api.routes.policy.constants import (
 router = APIRouter(prefix="/policy", tags=["policy"])
 
 
-def _clean(value: Optional[str]) -> Optional[str]:
     # raw_data 원문에서 빈값/placeholder는 None으로
+def _clean(value: Optional[str]) -> Optional[str]:
     if not value:
         return None
     v = value.strip()
     return v if v and v.lower() not in RAW_PLACEHOLDERS else None
 
-
+   # 참고 URL에 스킴 없으면 https:// 보정
 def _norm_url(value: Optional[str]) -> Optional[str]:
-    # 참고 URL에 스킴 없으면 https:// 보정
     u = _clean(value)
     if not u:
         return None
@@ -98,6 +98,8 @@ def _dday(
     days = (apply_end_date - date.today()).days
     if days < 0:
         return "마감", days
+    if days == 0:
+        return "D-DAY", days
     return f"D-{days}", days
 
 
@@ -172,29 +174,31 @@ def _to_card(p: Policy, inq_cnt: Optional[int] = None) -> PolicyCard:
         days=days,
         views=inq_cnt or 0,
         is_always_open=p.is_always_open,
+        sprt_arvl_seq_yn=p.sprt_arvl_seq_yn,
         apply_end_date=p.apply_end_date,
         aply_url_addr=_apply_url(p.aply_url_addr, p.plcy_no),
     )
 
 
-@router.get("/get/policies", response_model=PolicyListResponse)
-def list_policies(
-    db: Session = Depends(get_db),
-    category: Optional[List[str]] = Query(default=None, description="카테고리(다중)"),
-    keywords: Optional[List[str]] = Query(default=None, description="키워드(다중, 하나라도 포함)"),
-    sido: Optional[str] = Query(default=None, description="시도코드(전국 OR 해당 시도)"),
-    age: Optional[int] = Query(default=None, ge=0, description="나이(경계 포함 비교)"),
-    applicable: bool = Query(default=False, description="신청 가능한 것만"),
-    sort: str = Query(default="recent", pattern="^(popular|deadline|recent)$"),
-    page: int = Query(default=1, ge=1),
-    size: int = Query(default=20, ge=1, le=100),
-):
-    q = (
-        db.query(Policy, PolicyStats.inq_cnt)
-        .outerjoin(PolicyStats, PolicyStats.plcy_no == Policy.plcy_no)
-        .filter(Policy.is_active.is_(True))
-    )
+# ── /get/policies(목록)·/get/search(코드검색) 공용 필터·정렬 헬퍼 ──
+def _norm_codes(values: Optional[List[str]], grp: str) -> List[str]:
+    # 반복(?job=A&job=B)·콤마(?job=A,B) 혼용을 콤마로 합쳐 한 번에 평탄화
+    # → 형식검증(7자리·그룹접두어) + 순서보존 중복제거.
+    # FastAPI가 '?job='를 ['']로 넘겨도 strip 후 걸러져 빈 리스트가 됨(LIKE '%%' 전건매칭 방지).
+    if not values:
+        return []
+    out: List[str] = []
+    seen = set()
+    for c in ",".join(str(v) for v in values).split(","):
+        c = c.strip()
+        if len(c) == 7 and c.isdigit() and c.startswith(grp) and c not in seen:
+            seen.add(c)
+            out.append(c)
+    return out
 
+
+def _apply_base_filters(q, *, category, keywords, sido, age, applicable):
+    # 목록/검색이 공유하는 기본 필터(분류·키워드·지역·연령·신청가능)
     if category:
         q = q.filter(Policy.category.in_(category))
     if keywords:
@@ -217,16 +221,111 @@ def list_policies(
                 Policy.apply_end_date >= date.today(),
             ),
         )
+    return q
+
+
+    # 코드 8종 필터. 정규화 결과가 빈 것은 무제약. 차원 내 OR, 차원 간 AND.
+def _apply_code_filters(q, code_params: dict):
+    for key, spec in CODE_FILTERS.items():
+        codes = code_params.get(key) or []
+        if not codes:
+            continue
+        raw_key, nolimit, source = spec["raw_key"], spec["nolimit"], spec["source"]
+        eff = codes + ([nolimit] if nolimit else [])  # 제한없음/무관 자동 포함
+        if source == "raw_multi":
+            # raw_data 콤마 문자열 → 경계보호(',값,')로 정확 토큰 매칭(부분매칭 오탐 방지)
+            hay = func.concat(",", func.coalesce(Policy.raw_data[raw_key].astext, ""), ",")
+            q = q.filter(or_(*[hay.like(f"%,{c},%") for c in eff]))
+        elif source == "raw_single":
+            q = q.filter(Policy.raw_data[raw_key].astext.in_(codes))
+        else:  # column
+            q = q.filter(getattr(Policy, raw_key).in_(eff))
+    return q
+
+
+    # 정렬: popular=조회수순 / deadline=마감임박순 / recent=최신 인지순. 동점은 plcy_no로 안정정렬.
+def _apply_sort(q, sort: str):
+    if sort == "popular":
+        return q.order_by(PolicyStats.inq_cnt.desc().nullslast(), Policy.plcy_no.desc())
+    if sort == "deadline":
+        return q.order_by(Policy.apply_end_date.asc().nullslast(), Policy.plcy_no.desc())
+    return q.order_by(Policy.first_seen_at.desc().nullslast(), Policy.plcy_no.desc())
+
+
+@router.get("/get/policies", response_model=PolicyListResponse)
+def list_policies(
+    db: Session = Depends(get_db),
+    category: Optional[List[str]] = Query(default=None, description="카테고리(다중)"),
+    keywords: Optional[List[str]] = Query(default=None, description="키워드(다중, 하나라도 포함)"),
+    sido: Optional[str] = Query(default=None, description="시도코드(전국 OR 해당 시도)"),
+    age: Optional[int] = Query(default=None, ge=0, description="나이(경계 포함 비교)"),
+    applicable: bool = Query(default=False, description="신청 가능한 것만"),
+    sort: str = Query(default="recent", pattern="^(popular|deadline|recent)$"),
+    page: int = Query(default=1, ge=1),
+    size: int = Query(default=20, ge=1, le=100),
+):
+    q = (
+        db.query(Policy, PolicyStats.inq_cnt)
+        .outerjoin(PolicyStats, PolicyStats.plcy_no == Policy.plcy_no)
+        .filter(Policy.is_active.is_(True))
+    )
+    q = _apply_base_filters(q, category=category, keywords=keywords,
+                            sido=sido, age=age, applicable=applicable)
 
     total = q.count()
+    q = _apply_sort(q, sort)
+    rows = q.offset((page - 1) * size).limit(size).all()
+    return PolicyListResponse(
+        total=total, page=page, size=size,
+        items=[_to_card(p, inq_cnt) for p, inq_cnt in rows],
+    )
 
-    if sort == "popular":
-        q = q.order_by(PolicyStats.inq_cnt.desc().nullslast(), Policy.plcy_no.desc())
-    elif sort == "deadline":
-        q = q.order_by(Policy.apply_end_date.asc().nullslast(), Policy.plcy_no.desc())
-    else:
-        q = q.order_by(Policy.first_seen_at.desc().nullslast(), Policy.plcy_no.desc())
 
+@router.get("/get/search", response_model=PolicyListResponse)
+def search_policies(
+    db: Session = Depends(get_db),
+    # ── 코드 필터(신규, 콤마/반복 다중 = 차원 내 OR) ──
+    pvsn_method: Optional[List[str]] = Query(default=None, description="지원방식 코드(0042, 다중)"),
+    job: Optional[List[str]] = Query(default=None, description="취업상태 코드(0013, 다중)"),
+    school: Optional[List[str]] = Query(default=None, description="학력 코드(0049, 다중)"),
+    major: Optional[List[str]] = Query(default=None, description="전공 코드(0011, 다중)"),
+    sbiz: Optional[List[str]] = Query(default=None, description="특화분야 코드(0014, 다중)"),
+    inst_group: Optional[List[str]] = Query(default=None, description="제공기관 코드(0054 중앙/지자체, 다중)"),
+    income: Optional[List[str]] = Query(default=None, description="소득조건 코드(0043, 다중)"),
+    marriage: Optional[List[str]] = Query(default=None, description="혼인 코드(0055, 다중)"),
+    # ── 기존 필터 계승 ──
+    category: Optional[List[str]] = Query(default=None, description="카테고리(다중)"),
+    keywords: Optional[List[str]] = Query(default=None, description="키워드(다중, 하나라도 포함)"),
+    sido: Optional[str] = Query(default=None, description="시도코드(전국 OR 해당 시도)"),
+    age: Optional[int] = Query(default=None, ge=0, description="나이(경계 포함 비교)"),
+    applicable: bool = Query(default=False, description="신청 가능한 것만"),
+    sort: str = Query(default="recent", pattern="^(popular|deadline|recent)$"),
+    page: int = Query(default=1, ge=1),
+    size: int = Query(default=20, ge=1, le=100),
+):
+    """코드 기반 정책 검색 — 온통청년 코드 8종 필터 + 기존 필터(연령·지역·분류·키워드·신청가능).
+    차원 내 OR·차원 간 AND, 제한없음/무관 자동 포함. 응답은 목록과 동일한 PolicyCard.
+    """
+    # 코드 필터 정규화(빈/무효 → 차원 드롭). 필터 0개면 활성 전체 반환(= /get/policies 무필터와 동일).
+    code_params = {
+        k: _norm_codes(v, CODE_FILTERS[k]["grp"])
+        for k, v in {
+            "pvsn_method": pvsn_method, "job": job, "school": school, "major": major,
+            "sbiz": sbiz, "inst_group": inst_group, "income": income, "marriage": marriage,
+        }.items()
+    }
+
+    q = (
+        db.query(Policy, PolicyStats.inq_cnt)
+        .outerjoin(PolicyStats, PolicyStats.plcy_no == Policy.plcy_no)
+        .filter(Policy.is_active.is_(True))
+    )
+    q = _apply_base_filters(q, category=category, keywords=keywords,
+                            sido=sido, age=age, applicable=applicable)
+    q = _apply_code_filters(q, code_params)
+
+    total = q.count()
+    q = _apply_sort(q, sort)
     rows = q.offset((page - 1) * size).limit(size).all()
     return PolicyListResponse(
         total=total, page=page, size=size,
@@ -257,7 +356,9 @@ def get_policy(policy_id: str, db: Session = Depends(get_db)):
         for v in req_raw.values() if v
         for c in str(v).split(",") if c.strip()
     ]
-    labels = _code_labels(db, p.earn_cnd_se_cd, p.mrg_stts_cd, p.aply_prd_se_cd, *req_cds)
+    pvsn_cd = _clean(raw.get("plcyPvsnMthdCd"))            # 지원 방식 코드
+    scl_cnt_raw = str(raw.get("sprtSclCnt") or "").strip()  # 지원 규모/인원
+    labels = _code_labels(db, p.earn_cnd_se_cd, p.mrg_stts_cd, p.aply_prd_se_cd, pvsn_cd, *req_cds)
 
     eligibility = Eligibility(
         age=age_label,
@@ -303,6 +404,12 @@ def get_policy(policy_id: str, db: Session = Depends(get_db)):
         apply_end_date=p.apply_end_date,
         dday=label,
         days=days,
+        is_active=p.is_active,
+        sprt_arvl_seq_yn=p.sprt_arvl_seq_yn,
+        sprt_scl_lmt_yn={"Y": True, "N": False}.get(raw.get("sprtSclLmtYn")),
+        sprt_scl_cnt=int(scl_cnt_raw) if scl_cnt_raw.lstrip("-").isdigit() else None,
+        plcy_pvsn_mthd_cd=pvsn_cd,
+        plcy_pvsn_mthd_nm=labels.get(pvsn_cd),
         sprvsn_inst_cd_nm=p.sprvsn_inst_cd_nm,
         aply_url_addr=_apply_url(p.aply_url_addr, p.plcy_no),
         views=inq_cnt or 0,

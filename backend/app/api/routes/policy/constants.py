@@ -37,3 +37,20 @@ REQ_NOLIMIT = {
     "plcyMajorCd": "0011009",    # 전공
     "sbizCd": "0014010",         # 특화분야
 }
+
+# 코드 기반 검색(/get/search) 필터 스펙 — 온통청년 코드정의서 기준.
+#   source : 'raw_multi'(raw_data 콤마 다중값) | 'raw_single'(raw_data 단일값) | 'column'(DB 컬럼)
+#   grp    : 코드 그룹 접두어(4자리) — 형식 검증용(형식 불일치 코드는 조용히 무시)
+#   nolimit: 제한없음/무관 cd (있으면 필터 시 자동 포함, None이면 미적용)
+CODE_FILTERS = {
+    "job":         {"raw_key": "jobCd",           "source": "raw_multi",  "grp": "0013", "nolimit": "0013010"},
+    "school":      {"raw_key": "schoolCd",        "source": "raw_multi",  "grp": "0049", "nolimit": "0049010"},
+    "major":       {"raw_key": "plcyMajorCd",     "source": "raw_multi",  "grp": "0011", "nolimit": "0011009"},
+    "sbiz":        {"raw_key": "sbizCd",          "source": "raw_multi",  "grp": "0014", "nolimit": "0014010"},
+    "pvsn_method": {"raw_key": "plcyPvsnMthdCd",  "source": "raw_single", "grp": "0042", "nolimit": None},
+    "inst_group":  {"raw_key": "pvsnInstGroupCd", "source": "raw_single", "grp": "0054", "nolimit": None},
+    # income 은 '조건 유형 분류자'(자격은 earn_min/max_amt가 담당) + 기본값이 무관(0043001)이라 다수.
+    # 무관 자동포함 시 연소득/기타 필터가 무력화되므로 nolimit=None(자동포함 제외). 0043001 명시 필터는 여전히 동작.
+    "income":      {"raw_key": "earn_cnd_se_cd",  "source": "column",     "grp": "0043", "nolimit": None},
+    "marriage":    {"raw_key": "mrg_stts_cd",     "source": "column",     "grp": "0055", "nolimit": "0055003"},
+}
