@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React from "react";
 import { useSearchParams } from "next/navigation";
 import { useBookmarkStore } from "@/lib/store/bookmarkStore";
 import { useFilterStore } from "@/lib/store/filterStore";
@@ -11,11 +11,26 @@ interface ScreenProps {
   onNavigate?: (screenId: string) => void;
 }
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+
+function Section({ title, icon, accent = "blue", children }: {
+  title: string;
+  icon: React.ReactNode;
+  accent?: "blue" | "neutral";
+  children: React.ReactNode;
+}) {
+  const colors = {
+    blue: { border: "border-blue-100", bg: "bg-blue-50/60", iconBg: "bg-blue-100 text-blue-500", label: "text-blue-700" },
+    neutral: { border: "border-slate-100", bg: "bg-slate-50/60", iconBg: "bg-slate-200 text-slate-500", label: "text-slate-700" },
+  }[accent];
   return (
-    <div className="space-y-2">
-      <p className="text-[11px] font-extrabold text-slate-400 uppercase tracking-widest">{title}</p>
-      {children}
+    <div className={`rounded-2xl border ${colors.border} ${colors.bg} p-4 space-y-3`}>
+      <div className="flex items-center gap-2">
+        <div className={`w-6 h-6 rounded-lg flex items-center justify-center shrink-0 ${colors.iconBg}`}>
+          {icon}
+        </div>
+        <p className={`text-[12px] font-extrabold ${colors.label} tracking-wide`}>{title}</p>
+      </div>
+      <div className="pl-8">{children}</div>
     </div>
   );
 }
@@ -25,12 +40,11 @@ export default function PolicyDetailScreen({ onNavigate }: ScreenProps) {
   const { filters } = useFilterStore();
   const searchParams = useSearchParams();
   const policyId = searchParams.get("id");
-  const [isApplied, setIsApplied] = useState(false);
-
   const { policy, isLoading, error } = usePolicyDetail(policyId);
 
   const isFav = policy ? isBookmarked(policy.plcy_no) : false;
   const hasLink = !!policy?.aply_url_addr;
+  const isClosed = policy?.dday === "마감";
 
   const dDayVariant = (): "danger" | "neutral" => {
     if (!policy) return "neutral";
@@ -80,18 +94,14 @@ export default function PolicyDetailScreen({ onNavigate }: ScreenProps) {
   }
 
   return (
-    <div className="flex flex-col h-full bg-white font-sans select-none overflow-hidden">
+    <div className="h-full bg-white font-sans select-none flex flex-col">
 
-      {/* Scrollable body */}
-      <div className="flex-1 overflow-y-auto pt-19">
+      {/* ── Content (scrollable) ── */}
+      <div className="flex-1 min-h-0 overflow-y-auto pt-header">
 
         {/* ── Title block ── */}
         <div className="px-5 pt-5 pb-4 border-b border-slate-100">
-          <div className="flex items-center justify-between mb-3">
-            {isLoading
-              ? <div className="h-6 w-16 bg-slate-200 rounded-md animate-pulse" />
-              : <Badge variant="primary" size="md">{policy?.category ?? "기타"}</Badge>
-            }
+          <div className="flex items-center justify-end mb-3">
             {isLoading
               ? <div className="h-6 w-12 bg-slate-200 rounded-md animate-pulse" />
               : <Badge variant={dDayVariant()} size="md">{policy?.dday ?? "-"}</Badge>
@@ -177,9 +187,10 @@ export default function PolicyDetailScreen({ onNavigate }: ScreenProps) {
             </div>
           )}
 
-          {!isLoading && policy?.keywords && policy.keywords.length > 0 && (
-            <div className="flex flex-wrap gap-1.5 pt-0.5">
-              {policy.keywords.map((kw) => (
+          {!isLoading && (
+            <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+              <Badge variant="primary" size="md">{policy?.category ?? "기타"}</Badge>
+              {policy?.keywords?.map((kw) => (
                 <span
                   key={kw}
                   className={`px-2.5 py-0.5 rounded-md text-[11px] font-bold ${
@@ -195,14 +206,22 @@ export default function PolicyDetailScreen({ onNavigate }: ScreenProps) {
           )}
         </div>
 
-        {/* ── 지원 대상 ── */}
-        <div className="px-5 py-5 border-b border-slate-100">
-          <Section title="지원 대상">
+        {/* ── 지원 대상 + 혜택 내용 ── */}
+        <div className="px-5 py-5 space-y-3">
+          <Section
+            title="지원 대상"
+            accent="blue"
+            icon={
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+            }
+          >
             {isLoading ? (
               <div className="space-y-2 animate-pulse">
-                <div className="h-3.5 bg-slate-200 rounded w-full" />
-                <div className="h-3.5 bg-slate-200 rounded w-4/5" />
-                <div className="h-3.5 bg-slate-200 rounded w-3/5" />
+                <div className="h-3 bg-blue-200/60 rounded w-full" />
+                <div className="h-3 bg-blue-200/60 rounded w-4/5" />
+                <div className="h-3 bg-blue-200/60 rounded w-3/5" />
               </div>
             ) : policy?.plcy_expln_cn ? (
               <p className="text-[13px] text-slate-700 font-medium leading-relaxed whitespace-pre-line">
@@ -212,15 +231,20 @@ export default function PolicyDetailScreen({ onNavigate }: ScreenProps) {
               <p className="text-[13px] text-slate-400">정보 없음</p>
             )}
           </Section>
-        </div>
 
-        {/* ── 혜택 내용 ── */}
-        <div className="px-5 py-5 border-b border-slate-100">
-          <Section title="혜택 내용">
+          <Section
+            title="혜택 내용"
+            accent="neutral"
+            icon={
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            }
+          >
             {isLoading ? (
               <div className="space-y-2 animate-pulse">
-                <div className="h-3.5 bg-slate-200 rounded w-11/12" />
-                <div className="h-3.5 bg-slate-200 rounded w-3/4" />
+                <div className="h-3 bg-slate-200/60 rounded w-11/12" />
+                <div className="h-3 bg-slate-200/60 rounded w-3/4" />
               </div>
             ) : policy?.plcy_sprt_cn ? (
               <p className="text-[13px] text-slate-700 font-medium leading-relaxed whitespace-pre-line">
@@ -231,12 +255,10 @@ export default function PolicyDetailScreen({ onNavigate }: ScreenProps) {
             )}
           </Section>
         </div>
-
-        <div className="h-4" />
       </div>
 
-      {/* ── Fixed bottom action bar ── */}
-      <div className="shrink-0 px-5 py-4 border-t border-slate-100 bg-white flex items-center gap-3">
+      {/* ── Bottom action bar (always pinned to screen bottom) ── */}
+      <div className="shrink-0 px-5 pt-4 border-t border-slate-100 bg-white flex items-center gap-3 pb-safe z-10">
         <button
           onClick={() => policy && toggleBookmark(policy.plcy_no)}
           disabled={isLoading || !policy}
@@ -253,28 +275,19 @@ export default function PolicyDetailScreen({ onNavigate }: ScreenProps) {
 
         <button
           onClick={() => {
-            if (!hasLink) return;
-            setIsApplied(true);
-            setTimeout(() => setIsApplied(false), 2000);
+            if (!hasLink || isClosed) return;
             window.open(policy!.aply_url_addr!, "_blank", "noopener,noreferrer");
           }}
-          disabled={isLoading || !policy || !hasLink}
-          title={!hasLink ? "신청 링크가 제공되지 않는 정책입니다" : undefined}
+          disabled={isLoading || !policy || !hasLink || isClosed}
+          title={isClosed ? "마감된 정책입니다" : !hasLink ? "신청 링크가 제공되지 않는 정책입니다" : undefined}
           className={`flex-1 h-14 rounded-2xl font-bold text-[15px] flex items-center justify-center gap-2 transition-all active:scale-[0.98] disabled:cursor-not-allowed ${
-            isApplied
-              ? "bg-emerald-600 text-white"
-              : !hasLink
+            isClosed || !hasLink
               ? "bg-slate-100 text-slate-400"
               : "bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-600/25"
           }`}
         >
-          {isApplied ? (
-            <>
-              신청 완료!
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7" />
-              </svg>
-            </>
+          {isClosed ? (
+            "마감된 정책입니다"
           ) : !hasLink ? (
             "신청 링크 없음"
           ) : (
