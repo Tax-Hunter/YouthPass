@@ -1,14 +1,14 @@
-import { create } from "zustand"
-import { tokenStorage } from "@/lib/tokenStorage"
-import { fetchWithAuth } from "@/lib/fetchWithAuth"
-import type { User } from "@/lib/types"
+import { create } from "zustand";
+import { tokenStorage } from "@/lib/tokenStorage";
+import { fetchWithAuth } from "@/lib/fetchWithAuth";
+import type { User } from "@/lib/types";
 
 interface AuthState {
-  user: User | null
-  isLoading: boolean
-  setUser: (user: User | null) => void
-  clearUser: () => void
-  initAuth: () => Promise<void>
+  user: User | null;
+  isLoading: boolean;
+  setUser: (user: User | null) => void;
+  clearUser: () => void;
+  initAuth: () => Promise<void>;
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
@@ -20,7 +20,7 @@ export const useAuthStore = create<AuthState>((set) => ({
   clearUser: () => set({ user: null, isLoading: false }),
 
   initAuth: async () => {
-    const pendingToken = tokenStorage.getPendingLogout()
+    const pendingToken = tokenStorage.getPendingLogout();
     if (pendingToken) {
       fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/post/logout`, {
         method: "POST",
@@ -28,27 +28,27 @@ export const useAuthStore = create<AuthState>((set) => ({
         body: JSON.stringify({ refresh_token: pendingToken }),
       })
         .then(() => tokenStorage.clearPendingLogout())
-        .catch(() => {})
+        .catch(() => {});
     }
 
-    const token = tokenStorage.getAccessToken()
+    const token = tokenStorage.getAccessToken();
     if (!token) {
-      set({ isLoading: false })
-      return
+      set({ isLoading: false });
+      return;
     }
 
     try {
       const res = await fetchWithAuth(
-        `${process.env.NEXT_PUBLIC_API_URL}/users/get/me`
-      )
+        `${process.env.NEXT_PUBLIC_API_URL}/users/get/me`,
+      );
       if (!res.ok) {
-        tokenStorage.clear()
-        set({ user: null, isLoading: false })
-        return
+        tokenStorage.clear();
+        set({ user: null, isLoading: false });
+        return;
       }
-      set({ user: (await res.json()) as User, isLoading: false })
+      set({ user: (await res.json()) as User, isLoading: false });
     } catch {
-      set({ user: null, isLoading: false })
+      set({ user: null, isLoading: false });
     }
   },
-}))
+}));
