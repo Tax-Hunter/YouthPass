@@ -18,6 +18,7 @@ class PolicyCard(BaseModel):
     days: Optional[int] = None
     views: int
     is_always_open: bool
+    sprt_arvl_seq_yn: Optional[bool] = None  # 선착순 여부(뱃지)
     apply_end_date: Optional[date] = None
     aply_url_addr: str  # 신청 URL (없으면 온통청년 상세 페이지로 폴백)
 
@@ -73,6 +74,12 @@ class PolicyDetail(BaseModel):
     apply_end_date: Optional[date] = None
     dday: str
     days: Optional[int] = None
+    is_active: bool  # 온통청년 현재 목록 여부(FALSE=종료/미제공 — 만료 정책 구분용)
+    sprt_arvl_seq_yn: Optional[bool] = None   # 선착순 여부
+    sprt_scl_lmt_yn: Optional[bool] = None     # 지원 규모(인원) 제한 여부
+    sprt_scl_cnt: Optional[int] = None         # 지원 규모/인원 (0/None=미지정)
+    plcy_pvsn_mthd_cd: Optional[str] = None    # 지원 방식 코드
+    plcy_pvsn_mthd_nm: Optional[str] = None    # 지원 방식 라벨(프로그램/보조금/바우처 등)
 
     sprvsn_inst_cd_nm: Optional[str] = None
     aply_url_addr: Optional[str] = None

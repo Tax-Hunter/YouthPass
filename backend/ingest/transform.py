@@ -13,6 +13,7 @@ from app.api.routes.policy.constants import (
     APLY_PRD_ALWAYS,
     RAW_PLACEHOLDERS,
     SIDO_LABELS,
+    ZIP12_SIDO,
 )
 from ingest.vocab import filter_keywords, resolve_category
 
@@ -134,8 +135,8 @@ def _region(zip_cd):
                 continue
             seen_z.add(z)
             zips.append(z)
-            sido = z[:2]
-            if sido in VALID_SIDO and sido not in seen_s:
+            sido = ZIP12_SIDO.get(z[:3]) if z[:2] == "12" else z[:2]
+            if sido and sido in VALID_SIDO and sido not in seen_s:
                 seen_s.add(sido)
                 sidos.append(sido)
     sidos.sort()
