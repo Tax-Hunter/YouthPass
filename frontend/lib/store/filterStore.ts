@@ -38,11 +38,14 @@ export const useFilterStore = create<FilterStore>()(
       onRehydrateStorage: () => (state) => {
         state?.setHasHydrated(true)
       },
-      merge: (persisted, current) => ({
-        ...current,
-        filters: { ...DEFAULT_FILTERS, ...(persisted as FilterStore).filters },
-        filterApplied: (persisted as FilterStore).filterApplied ?? false,
-      }),
+      merge: (persisted, current) => {
+        const p = (persisted ?? {}) as Partial<FilterStore>
+        return {
+          ...current,
+          filters: { ...DEFAULT_FILTERS, ...p.filters },
+          filterApplied: p.filterApplied ?? false,
+        }
+      },
     }
   )
 )
