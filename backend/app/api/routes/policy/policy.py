@@ -1,8 +1,8 @@
-from datetime import date
+from datetime import date, datetime, timedelta, timezone
 from typing import List, Optional, Tuple
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import and_, func, or_
+from sqlalchemy import and_, case, func, or_
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
@@ -19,6 +19,14 @@ from app.api.routes.policy.constants import (
 )
 
 router = APIRouter(prefix="/policy", tags=["policy"])
+
+KST = timezone(timedelta(hours=9))
+
+
+def _today_kst() -> date:
+    # D-day·마감 판정 기준일 — 서버가 UTC 컨테이너여도 한국 날짜 기준 유지
+    # (date.today()는 UTC 자정~KST 자정 사이 하루 어긋남)
+    return datetime.now(KST).date()
 
 
     # raw_data 원문에서 빈값/placeholder는 None으로
@@ -95,7 +103,7 @@ def _dday(
         return "상시모집", None
     if apply_end_date is None:
         return "미정", None
-    days = (apply_end_date - date.today()).days
+    days = (apply_end_date - _today_kst()).days
     if days < 0:
         return "마감", days
     if days == 0:
@@ -181,6 +189,16 @@ def _to_card(p: Policy, inq_cnt: Optional[int] = None) -> PolicyCard:
 
 
 # ── /get/policies(목록)·/get/search(코드검색) 공용 필터·정렬 헬퍼 ──
+def _apply_text_filter(q, term: Optional[str]):
+    # q(정책명 부분일치 검색) — pg_trgm GIN(idx_policy_nm_trgm)이 ILIKE를 가속.
+    # %·_·\ 는 리터럴로 이스케이프(와일드카드 주입 방지).
+    t = (term or "").strip()
+    if not t:
+        return q
+    esc = t.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+    return q.filter(Policy.plcy_nm.ilike(f"%{esc}%", escape="\\"))
+
+
 def _norm_codes(values: Optional[List[str]], grp: str) -> List[str]:
     # 반복(?job=A&job=B)·콤마(?job=A,B) 혼용을 콤마로 합쳐 한 번에 평탄화
     # → 형식검증(7자리·그룹접두어) + 순서보존 중복제거.
@@ -218,7 +236,7 @@ def _apply_base_filters(q, *, category, keywords, sido, age, applicable):
             or_(
                 Policy.is_always_open.is_(True),
                 Policy.apply_end_date.is_(None),
-                Policy.apply_end_date >= date.today(),
+                Policy.apply_end_date >= _today_kst(),
             ),
         )
     return q
@@ -248,13 +266,22 @@ def _apply_sort(q, sort: str):
     if sort == "popular":
         return q.order_by(PolicyStats.inq_cnt.desc().nullslast(), Policy.plcy_no.desc())
     if sort == "deadline":
-        return q.order_by(Policy.apply_end_date.asc().nullslast(), Policy.plcy_no.desc())
+        # 마감임박순 = 신청가능(미래 마감) 임박순 → 상시/미정(NULL) → 이미 지난 마감.
+        # 활성 정책의 39%가 과거 마감(2026-07 실측)이라, 보정 없으면 최상단이 전부 지난 정책이 됨.
+        rank = case(
+            (Policy.apply_end_date < _today_kst(), 2),
+            (Policy.apply_end_date.is_(None), 1),
+            else_=0,
+        )
+        return q.order_by(rank.asc(), Policy.apply_end_date.asc(), Policy.plcy_no.desc())
     return q.order_by(Policy.first_seen_at.desc().nullslast(), Policy.plcy_no.desc())
 
 
 @router.get("/get/policies", response_model=PolicyListResponse)
 def list_policies(
     db: Session = Depends(get_db),
+    q_text: Optional[str] = Query(default=None, alias="q", min_length=1, max_length=100,
+                                  description="정책명 텍스트 검색어(부분일치)"),
     category: Optional[List[str]] = Query(default=None, description="카테고리(다중)"),
     keywords: Optional[List[str]] = Query(default=None, description="키워드(다중, 하나라도 포함)"),
     sido: Optional[str] = Query(default=None, description="시도코드(전국 OR 해당 시도)"),
@@ -271,6 +298,7 @@ def list_policies(
     )
     q = _apply_base_filters(q, category=category, keywords=keywords,
                             sido=sido, age=age, applicable=applicable)
+    q = _apply_text_filter(q, q_text)
 
     total = q.count()
     q = _apply_sort(q, sort)
@@ -284,6 +312,8 @@ def list_policies(
 @router.get("/get/search", response_model=PolicyListResponse)
 def search_policies(
     db: Session = Depends(get_db),
+    q_text: Optional[str] = Query(default=None, alias="q", min_length=1, max_length=100,
+                                  description="정책명 텍스트 검색어(부분일치)"),
     # ── 코드 필터(신규, 콤마/반복 다중 = 차원 내 OR) ──
     pvsn_method: Optional[List[str]] = Query(default=None, description="지원방식 코드(0042, 다중)"),
     job: Optional[List[str]] = Query(default=None, description="취업상태 코드(0013, 다중)"),
@@ -303,8 +333,8 @@ def search_policies(
     page: int = Query(default=1, ge=1),
     size: int = Query(default=20, ge=1, le=100),
 ):
-    """코드 기반 정책 검색 — 온통청년 코드 8종 필터 + 기존 필터(연령·지역·분류·키워드·신청가능).
-    차원 내 OR·차원 간 AND, 제한없음/무관 자동 포함. 응답은 목록과 동일한 PolicyCard.
+    """코드 기반 정책 검색 — 온통청년 코드 8종 필터 + 기존 필터(연령·지역·분류·키워드·신청가능)
+    + q(정책명 부분일치). 차원 내 OR·차원 간 AND, 제한없음/무관 자동 포함. 응답은 목록과 동일한 PolicyCard.
     """
     # 코드 필터 정규화(빈/무효 → 차원 드롭). 필터 0개면 활성 전체 반환(= /get/policies 무필터와 동일).
     code_params = {
@@ -322,6 +352,7 @@ def search_policies(
     )
     q = _apply_base_filters(q, category=category, keywords=keywords,
                             sido=sido, age=age, applicable=applicable)
+    q = _apply_text_filter(q, q_text)
     q = _apply_code_filters(q, code_params)
 
     total = q.count()

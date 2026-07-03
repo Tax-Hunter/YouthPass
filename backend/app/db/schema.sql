@@ -1,10 +1,13 @@
 -- ============================================================
 -- 청년정책 추천 플랫폼 — 확정 스키마
 -- ------------------------------------------------------------
--- 마이그레이션(alembic/versions/155c1e07c9d6_init_member_tables.py)과 1:1 일치.
+-- alembic/versions/ 마이그레이션 체인과 1:1 일치.
 -- 멱등(IF NOT EXISTS) — 재실행 안전.
 -- 실제 DDL 실행은 alembic upgrade head 로 수행한다.
 -- ============================================================
+
+-- q 텍스트 검색(정책명 부분일치) — GIN(trgm)이 ILIKE 가속
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
 
 -- ── policy : 정책 본문 (plcy_no 자연키 PK) ─────────────────
 CREATE TABLE IF NOT EXISTS policy (
@@ -66,6 +69,7 @@ CREATE INDEX IF NOT EXISTS idx_policy_keywords ON policy USING gin (keywords);
 CREATE INDEX IF NOT EXISTS idx_policy_category ON policy (category) WHERE is_active;
 CREATE INDEX IF NOT EXISTS idx_policy_age      ON policy (sprt_trgt_min_age, sprt_trgt_max_age) WHERE is_active;
 CREATE INDEX IF NOT EXISTS idx_policy_end      ON policy (apply_end_date) WHERE is_active AND NOT is_always_open;
+CREATE INDEX IF NOT EXISTS idx_policy_nm_trgm  ON policy USING gin (plcy_nm gin_trgm_ops);
 
 -- ── policy_stats : 변동값 1:1 분리 (매 동기화 갱신) ────────
 CREATE TABLE IF NOT EXISTS policy_stats (
