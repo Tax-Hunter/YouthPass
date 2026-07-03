@@ -3,9 +3,11 @@
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useBookmarkStore } from "@/lib/store/bookmarkStore";
-import { usePolicyList } from "@/lib/api/policy";
+import { useInfinitePolicyList, sortPoliciesByDeadline } from "@/lib/api/policy";
+import { useInfiniteScrollSentinel } from "@/lib/useInfiniteScrollSentinel";
 import PolicyCard from "@/app/components/ui/PolicyCard";
 import FloatingFilterButton from "@/app/components/ui/FloatingFilterButton";
+import FilterScreen from "@/app/features/filter/FilterScreen";
 
 interface ScreenProps {
   onNavigate?: (screenId: string) => void;
@@ -16,6 +18,8 @@ export default function SearchScreen({ onNavigate }: ScreenProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedTerm, setDebouncedTerm] = useState("");
   const [recentSearches, setRecentSearches] = useState<string[]>(["월세 지원", "청년 주거", "전세 대출"]);
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [showClosedOnly, setShowClosedOnly] = useState(false);
   const { toggle: toggleBookmark, isBookmarked } = useBookmarkStore();
 
   useEffect(() => {
@@ -23,9 +27,15 @@ export default function SearchScreen({ onNavigate }: ScreenProps) {
     return () => clearTimeout(t);
   }, [searchTerm]);
 
-  const { data, isLoading } = usePolicyList(
-    debouncedTerm ? { q: debouncedTerm, size: 20 } : null
-  );
+  const { items, total, isLoading, fetchNextPage, hasNextPage, isFetchingNextPage } = useInfinitePolicyList({
+    ...(debouncedTerm ? { q: debouncedTerm } : { sort: "recent" }),
+    size: 20,
+    ...(showClosedOnly ? { closed_only: true } : { applicable: true }),
+  });
+
+  // closed_only는 배포된 백엔드가 아직 지원 안 할 수 있어 dday로 한 번 더 걸러 안전하게 보장
+  // (배포 이후엔 서버가 이미 걸러주므로 아래 필터는 그냥 통과만 함)
+  const closedFilteredItems = showClosedOnly ? items.filter((p) => p.dday === "마감") : items;
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -46,8 +56,12 @@ export default function SearchScreen({ onNavigate }: ScreenProps) {
     onNavigate?.(`detail?id=${plcy_no}`);
   };
 
+  const sortedItems = closedFilteredItems.length > 0 ? sortPoliciesByDeadline(closedFilteredItems) : null;
+
+  const sentinelRef = useInfiniteScrollSentinel(fetchNextPage, hasNextPage && !isFetchingNextPage);
+
   return (
-    <div className="flex flex-col h-full bg-white text-slate-800 font-sans select-none overflow-hidden relative pt-19">
+    <div className="flex flex-col h-full bg-white text-slate-800 font-sans select-none overflow-hidden relative pt-header">
 
       {/* Search Input */}
       <form onSubmit={handleSearchSubmit} className="px-6 py-2 shrink-0">
@@ -112,58 +126,82 @@ export default function SearchScreen({ onNavigate }: ScreenProps) {
         )}
 
         {/* Results */}
-        {!debouncedTerm ? (
-          <div className="text-center py-16">
-            <p className="text-xs font-bold text-slate-400">검색어를 입력해 주세요</p>
+        <div className="px-6 pt-4 pb-2 flex items-center justify-between border-t border-slate-50 mt-3">
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs font-bold text-slate-800">
+              {debouncedTerm ? "검색 결과" : showClosedOnly ? "마감 정책" : "전체 정책"}
+            </span>
+            {!isLoading && !showClosedOnly && <span className="text-xs font-bold text-blue-600 font-mono">{total}</span>}
           </div>
-        ) : (
-          <>
-            <div className="px-6 pt-4 pb-2 flex items-center gap-1.5 border-t border-slate-50 mt-3">
-              <span className="text-xs font-bold text-slate-800">검색 결과</span>
-              <span className="text-xs font-bold text-blue-600 font-mono">{data?.total ?? 0}</span>
-            </div>
+          <button
+            type="button"
+            onClick={() => setShowClosedOnly((prev) => !prev)}
+            className="flex items-center gap-1.5"
+          >
+            <span className="text-[11px] font-bold text-slate-500">마감 정책만 보기</span>
+            <span
+              className={`w-9 h-5 rounded-full p-0.5 transition-colors flex items-center ${
+                showClosedOnly ? "bg-blue-600 justify-end" : "bg-slate-200 justify-start"
+              }`}
+            >
+              <span className="w-4 h-4 rounded-full bg-white shadow-sm" />
+            </span>
+          </button>
+        </div>
 
-            <div className="px-6 py-4 space-y-5">
-              {isLoading ? (
-                Array.from({ length: 3 }).map((_, i) => (
-                  <div key={i} className="p-5 bg-white border border-slate-100 rounded-2xl animate-pulse">
-                    <div className="flex justify-between mb-3">
-                      <div className="h-5 w-14 bg-slate-200 rounded-full" />
-                      <div className="h-5 w-10 bg-slate-200 rounded-full" />
-                    </div>
-                    <div className="space-y-2">
-                      <div className="h-4 bg-slate-200 rounded-md w-11/12" />
-                      <div className="h-3 bg-slate-200 rounded-md w-7/12" />
-                    </div>
-                  </div>
-                ))
-              ) : !data || data.items.length === 0 ? (
-                <div className="text-center py-10">
-                  <p className="text-xs font-bold text-slate-400">검색 결과가 없습니다.</p>
+        <div className="px-6 py-4 space-y-5">
+          {isLoading ? (
+            Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="p-5 bg-white border border-slate-100 rounded-2xl animate-pulse">
+                <div className="flex justify-between mb-3">
+                  <div className="h-5 w-14 bg-slate-200 rounded-full" />
+                  <div className="h-5 w-10 bg-slate-200 rounded-full" />
                 </div>
-              ) : (
-                data.items.map((policy) => (
-                  <PolicyCard
-                    key={policy.plcy_no}
-                    policy={policy}
-                    isBookmarked={isBookmarked(policy.plcy_no)}
-                    onToggleBookmark={() => toggleBookmark(policy.plcy_no)}
-                    onClick={() => handleCardClick(policy.plcy_no)}
-                    showCategory={true}
-                    showLocation={true}
-                    showActionText={true}
-                  />
-                ))
+                <div className="space-y-2">
+                  <div className="h-4 bg-slate-200 rounded-md w-11/12" />
+                  <div className="h-3 bg-slate-200 rounded-md w-7/12" />
+                </div>
+              </div>
+            ))
+          ) : !sortedItems || sortedItems.length === 0 ? (
+            <div className="text-center py-10">
+              <p className="text-xs font-bold text-slate-400">검색 결과가 없습니다.</p>
+            </div>
+          ) : (
+            sortedItems.map((policy) => (
+              <PolicyCard
+                key={policy.plcy_no}
+                policy={policy}
+                isBookmarked={isBookmarked(policy.plcy_no)}
+                onToggleBookmark={() => toggleBookmark(policy.plcy_no)}
+                onClick={() => handleCardClick(policy.plcy_no)}
+                showCategory={true}
+                showLocation={true}
+                showActionText={true}
+              />
+            ))
+          )}
+          {sortedItems && sortedItems.length > 0 && (
+            <div ref={sentinelRef} className="h-4">
+              {isFetchingNextPage && (
+                <div className="flex justify-center py-2">
+                  <div className="w-5 h-5 border-2 border-blue-200 border-t-blue-600 rounded-full animate-spin" />
+                </div>
               )}
             </div>
-          </>
-        )}
+          )}
+        </div>
       </div>
 
       <FloatingFilterButton
-        onClick={() => router.push("/filter?from=search")}
-        onMouseEnter={() => router.prefetch("/filter")}
+        onClick={() => setIsFilterOpen(true)}
       />
+
+      {isFilterOpen && (
+        <div className="absolute inset-0 z-50">
+          <FilterScreen onNavigate={() => setIsFilterOpen(false)} />
+        </div>
+      )}
     </div>
   );
 }
