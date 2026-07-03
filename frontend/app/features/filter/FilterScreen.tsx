@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState } from "react";
-import { useRouter } from "next/navigation";
 import { useFilterStore } from "@/lib/store/filterStore";
 import SelectDropdown from "@/app/components/ui/SelectDropdown";
 import OptionButton from "@/app/components/ui/OptionButton";
@@ -11,7 +10,6 @@ interface ScreenProps {
 }
 
 export default function FilterScreen({ onNavigate }: ScreenProps) {
-  const router = useRouter();
   const { filters, saveFilters } = useFilterStore();
 
   const [city, setCity] = useState(() => filters.city);
@@ -47,32 +45,10 @@ export default function FilterScreen({ onNavigate }: ScreenProps) {
   };
 
   return (
-    <div className="flex flex-col h-full bg-slate-900/50 text-slate-800 font-sans select-none relative justify-end">
-      {/* Background Dim Page mockup */}
-      <div className="absolute inset-0 z-0 p-5 bg-slate-100 flex flex-col justify-start opacity-70 pointer-events-none">
-        <div className="flex items-center justify-between mb-4 mt-2">
-          <div className="flex items-center gap-1 text-slate-700 font-semibold text-sm">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
-            </svg>
-            Policy List
-          </div>
-          <svg className="w-5 h-5 text-slate-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-          </svg>
-        </div>
-        <div className="h-6 w-20 bg-slate-200 rounded mb-4" />
-        <div className="space-y-4">
-          <div className="h-28 bg-white rounded-2xl border border-slate-200" />
-        </div>
-      </div>
-
-      {/* Dim overlay */}
+    <div className="flex flex-col h-full text-slate-800 font-sans select-none relative justify-end">
+      {/* Dim overlay — 뒤 페이지가 그대로 보임 */}
       <div
         onClick={() => onNavigate?.("list")}
-        onMouseEnter={() => {
-          router.prefetch("/list");
-        }}
         className="absolute inset-0 bg-black/40 z-10 cursor-pointer"
       />
 
@@ -89,9 +65,6 @@ export default function FilterScreen({ onNavigate }: ScreenProps) {
           <h3 className="text-[17px] font-bold text-slate-900">필터</h3>
           <button
             onClick={() => onNavigate?.("list")}
-            onMouseEnter={() => {
-              router.prefetch("/list");
-            }}
             className="p-1 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-700 transition-colors"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -100,8 +73,9 @@ export default function FilterScreen({ onNavigate }: ScreenProps) {
           </button>
         </header>
 
-        {/* Scrolling Fields */}
-        <div className="flex-1 overflow-y-auto px-6 py-5 space-y-6">
+        {/* Scrolling Fields + sticky footer */}
+        <div className="flex-1 overflow-y-auto">
+        <div className="px-6 py-5 space-y-6 pb-0">
           {/* Section 1: 거주 지역 */}
           <div className="space-y-2.5">
             <h4 className="text-[13px] font-bold text-slate-800">거주 지역</h4>
@@ -153,8 +127,8 @@ export default function FilterScreen({ onNavigate }: ScreenProps) {
           </div>
         </div>
 
-        {/* Footer */}
-        <footer className="p-5 border-t border-slate-100 flex items-center gap-3 bg-white shrink-0 pb-8">
+        {/* Footer - sticky inside scroll */}
+        <footer className="sticky bottom-0 p-5 border-t border-slate-100 flex items-center gap-3 bg-white pb-safe-xl z-10">
           <button
             onClick={resetFilters}
             className="py-4.5 px-5 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold rounded-2xl flex items-center justify-center gap-1.5 transition-colors active:scale-95 text-[14.5px] shrink-0"
@@ -168,15 +142,13 @@ export default function FilterScreen({ onNavigate }: ScreenProps) {
 
           <button
             onClick={applyFilters}
-            onMouseEnter={() => {
-              router.prefetch("/list");
-            }}
             className="flex-1 py-4.5 px-4 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-2xl text-[14.5px] shadow-lg shadow-blue-600/25 transition-all active:scale-[0.98]"
           >
             적용하기
           </button>
         </footer>
       </div>
+    </div>
     </div>
   );
 }
