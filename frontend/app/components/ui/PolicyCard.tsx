@@ -1,7 +1,8 @@
 "use client";
 
 import React from "react";
-import { PolicyCardData } from "@/lib/api/policy";
+import { useQueryClient } from "@tanstack/react-query";
+import { PolicyCardData, prefetchPolicyDetail } from "@/lib/api/policy";
 import Badge from "./Badge";
 
 interface PolicyCardProps {
@@ -12,6 +13,8 @@ interface PolicyCardProps {
   showCategory?: boolean;
   showLocation?: boolean;
   showActionText?: boolean;
+  showDday?: boolean;
+  showSummary?: boolean;
 }
 
 export default function PolicyCard({
@@ -22,12 +25,17 @@ export default function PolicyCard({
   showCategory = true,
   showLocation = true,
   showActionText = false,
+  showDday = true,
+  showSummary = true,
 }: PolicyCardProps) {
+  const isDdayClosed = policy.dday === "마감";
   const isDdayUrgent = policy.dday.startsWith("D-");
+  const queryClient = useQueryClient();
 
   return (
     <div
       onClick={onClick}
+      onMouseEnter={() => prefetchPolicyDetail(queryClient, policy.plcy_no)}
       className="p-5 bg-white border border-slate-100 rounded-2xl shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer group relative flex flex-col justify-between"
     >
       <div>
@@ -41,9 +49,11 @@ export default function PolicyCard({
             )}
           </div>
           <div className="flex items-center gap-2">
-            <Badge variant={isDdayUrgent ? "danger" : "primary"} size="sm">
-              {policy.dday}
-            </Badge>
+            {showDday && (
+              <Badge variant={isDdayClosed ? "neutral" : isDdayUrgent ? "danger" : "primary"} size="sm">
+                {policy.dday}
+              </Badge>
+            )}
             <button
               onClick={(e) => {
                 e.stopPropagation();
@@ -68,7 +78,7 @@ export default function PolicyCard({
         </h4>
 
         {/* Description */}
-        {policy.summary && (
+        {showSummary && policy.summary && (
           <p className="text-xs text-slate-500 mt-1.5 font-medium leading-relaxed line-clamp-2">
             {policy.summary}
           </p>
