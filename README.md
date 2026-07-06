@@ -61,8 +61,6 @@ YouthPass/
 
 ## 🔌 API 엔드포인트
 
-경로 규칙: `/api/{기능}/{메서드}/{상세}`
-
 | 메서드 | 경로 | 설명 |
 |---|---|---|
 | GET | `/api/health/get/status` | 서버 상태 확인 |
@@ -100,6 +98,24 @@ alembic upgrade head
 uvicorn app.main:app --reload   # http://localhost:8000
 ```
 
+**HTTPS로 로컬 접속하려면 (`https://localhost:3000`)**
+```bash
+# frontend/.env: NEXT_PUBLIC_API_URL, GOOGLE_REDIRECT_URI를 https://localhost:... 로 설정
+# backend/.env: ALLOWED_ORIGINS, GOOGLE_REDIRECT_URI, FRONTEND_URL을 https://localhost:... 로 설정
+# Google Cloud Console 승인된 리디렉션 URI에 https://localhost:8000/api/auth/get/google-callback 추가 필요
+
+cd frontend
+npm run dev:https   # mkcert 자체 서명 인증서로 https://localhost:3000 서빙
+
+cd backend
+# 최초 1회: backend/certs/ 에 localhost용 자체 서명 인증서 생성
+mkdir -p certs && cd certs
+openssl req -x509 -nodes -newkey rsa:2048 -keyout localhost-key.pem -out localhost.pem \
+  -days 825 -subj "/CN=localhost" -addext "subjectAltName=DNS:localhost,IP:127.0.0.1"
+cd ..
+uvicorn app.main:app --reload --ssl-keyfile certs/localhost-key.pem --ssl-certfile certs/localhost.pem
+```
+
 **정책 데이터 수집 (ingest)**
 ```bash
 cd backend
@@ -109,39 +125,3 @@ python -m ingest.run load                 # 실제 DB 적재
 ```
 
 <br>
-
-## 🌿 Git 브랜치 전략
-
-| 브랜치 | 역할 |
-|---|---|
-| `main` | 커밋 없음. `dev` 브랜치에서 완료된 작업만 Pull Request 용도로 사용 |
-| `dev` | 개발 브랜치. 자식 브랜치에서 작업한 내용들을 병합하는 브랜치 |
-| `자식 브랜치` | 기능 단위별 작업 브랜치. 네이밍 규칙: `작업내용/#작업번호` (예: `feat/#12`, `fix/#3`) |
-
-<br>
-
-## ✏️ Commit Type
-
-| 타입 | 설명 | 예시 |
-|---|---|---|
-| **feat** | 새로운 기능을 추가할 때 사용합니다. | `feat: 로그인 폼 유효성 검사 추가` |
-| **fix** | 버그를 수정할 때 사용합니다. | `fix: 로그인 버그 수정` |
-| **style** | 사용자 인터페이스 관련 변경 사항. | `style: 네비게이션 바 디자인 수정` |
-| **refactor** | 버그 수정이나 기능 추가 없이 코드 구조를 개선할 때 사용합니다. | `refactor: 컴포넌트 상태 관리 로직 단순화` |
-| **perf** | 성능을 개선하는 코드 변경. | `perf: 이미지 로딩 시간 최적화` |
-| **test** | 테스트 코드를 추가하거나 수정할 때 사용합니다. | `test: 버튼 컴포넌트에 대한 단위 테스트 추가` |
-| **docs** | 문서만 변경할 때 사용합니다. | `docs: 설치 단계 README에 추가` |
-| **chore** | 소스나 테스트 파일을 수정하지 않는 일반적인 작업이나 업데이트. | `chore: 종속성 패키지 업데이트` |
-| **revert** | 이전 커밋을 되돌릴 때 사용합니다. | `revert: "로그인 폼 유효성 검사 추가" 커밋 되돌림` |
-| **init** | 프로젝트 초기 설정 시 사용합니다. | `init: React 프로젝트 초기 설정` |
-| **delete** | 코드/파일 삭제. | `delete: 안 쓰는 로그인 컴포넌트 삭제` |
-| **wip** | 작업 중이거나 실험적인 변경 사항. | `wip: 새로운 인증 방법을 실험 중` |
-
-<br>
-
-## 📄 관련 문서
-
-- [PRD/SETTINGS.md](./PRD/SETTINGS.md) — 기획 배경, 요구사항, ERD, 환경 세팅 현황
-- [PRD/WIREFRAME.md](./PRD/WIREFRAME.md) — 와이어프레임
-- [CLAUDE.md](./CLAUDE.md) — 작업 기록/API 명명 규칙 등 개발 지침
-- [workflow/](./workflow/) — 이슈·브랜치별 작업 계획 및 결과 기록
