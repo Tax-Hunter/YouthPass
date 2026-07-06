@@ -1,7 +1,8 @@
+import hashlib
 from datetime import date, datetime, timedelta, timezone
 from typing import List, Optional, Tuple
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from sqlalchemy import and_, case, func, or_
 from sqlalchemy.orm import Session
 
@@ -9,6 +10,7 @@ from app.core.config import settings
 from app.db.session import get_db
 from app.db.models import Policy, PolicyStats, Code
 from app.schemas.policy import Eligibility, PolicyCard, PolicyDetail, PolicyListResponse
+from app.api.routes.policy.cache import policy_cache_get, policy_cache_set
 from app.api.routes.policy.constants import (
     APLY_PRD_CLOSED,
     CATEGORY_FALLBACK,
@@ -215,6 +217,12 @@ def _norm_codes(values: Optional[List[str]], grp: str) -> List[str]:
     return out
 
 
+def _cache_ident(*parts) -> str:
+    # 파라미터 조합 → 결정적 캐시 식별자. 다중값(list)은 정렬해 표현 순서 차이를 무시.
+    norm = tuple(sorted(p) if isinstance(p, list) else p for p in parts)
+    return hashlib.sha1(repr(norm).encode()).hexdigest()
+
+
 def _apply_base_filters(q, *, category, keywords, sido, age, applicable):
     # 목록/검색이 공유하는 기본 필터(분류·키워드·지역·연령·신청가능)
     if category:
@@ -291,6 +299,11 @@ def list_policies(
     page: int = Query(default=1, ge=1),
     size: int = Query(default=20, ge=1, le=100),
 ):
+    cache_id = _cache_ident(q_text, category, keywords, sido, age, applicable, sort, page, size)
+    cached = policy_cache_get("list", cache_id)
+    if cached is not None:
+        return Response(content=cached, media_type="application/json")
+
     q = (
         db.query(Policy, PolicyStats.inq_cnt)
         .outerjoin(PolicyStats, PolicyStats.plcy_no == Policy.plcy_no)
@@ -303,10 +316,12 @@ def list_policies(
     total = q.count()
     q = _apply_sort(q, sort)
     rows = q.offset((page - 1) * size).limit(size).all()
-    return PolicyListResponse(
+    resp = PolicyListResponse(
         total=total, page=page, size=size,
         items=[_to_card(p, inq_cnt) for p, inq_cnt in rows],
     )
+    policy_cache_set("list", cache_id, resp.model_dump_json())
+    return resp
 
 
 @router.get("/get/search", response_model=PolicyListResponse)
@@ -345,6 +360,13 @@ def search_policies(
         }.items()
     }
 
+    # 캐시 식별자는 정규화된 코드 필터 기준 — 동치 요청(순서/중복 차이)이 같은 키를 공유
+    cache_id = _cache_ident(q_text, category, keywords, sido, age, applicable, sort, page, size,
+                            sorted((k, tuple(sorted(v))) for k, v in code_params.items()))
+    cached = policy_cache_get("search", cache_id)
+    if cached is not None:
+        return Response(content=cached, media_type="application/json")
+
     q = (
         db.query(Policy, PolicyStats.inq_cnt)
         .outerjoin(PolicyStats, PolicyStats.plcy_no == Policy.plcy_no)
@@ -358,14 +380,20 @@ def search_policies(
     total = q.count()
     q = _apply_sort(q, sort)
     rows = q.offset((page - 1) * size).limit(size).all()
-    return PolicyListResponse(
+    resp = PolicyListResponse(
         total=total, page=page, size=size,
         items=[_to_card(p, inq_cnt) for p, inq_cnt in rows],
     )
+    policy_cache_set("search", cache_id, resp.model_dump_json())
+    return resp
 
 
 @router.get("/get/policy/{policy_id}", response_model=PolicyDetail)
 def get_policy(policy_id: str, db: Session = Depends(get_db)):
+    cached = policy_cache_get("detail", policy_id)
+    if cached is not None:
+        return Response(content=cached, media_type="application/json")
+
     row = (
         db.query(Policy, PolicyStats.inq_cnt)
         .outerjoin(PolicyStats, PolicyStats.plcy_no == Policy.plcy_no)
@@ -407,7 +435,7 @@ def get_policy(policy_id: str, db: Session = Depends(get_db)):
     ref_urls = [u for u in (_norm_url(raw.get("refUrlAddr1")), _norm_url(raw.get("refUrlAddr2"))) if u]
     contact = _clean(raw.get("sprvsnInstPicNm")) or _clean(raw.get("operInstPicNm"))
 
-    return PolicyDetail(
+    resp = PolicyDetail(
         plcy_no=p.plcy_no,
         plcy_nm=p.plcy_nm,
         category=p.category or CATEGORY_FALLBACK,
@@ -457,3 +485,6 @@ def get_policy(policy_id: str, db: Session = Depends(get_db)):
         ref_urls=ref_urls,
         biz_period=_biz_period(raw.get("bizPrdBgngYmd"), raw.get("bizPrdEndYmd")),
     )
+    # 404는 캐시하지 않음(위에서 조기 반환) — 존재 정책의 성공 응답만 저장
+    policy_cache_set("detail", policy_id, resp.model_dump_json())
+    return resp

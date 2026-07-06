@@ -41,6 +41,7 @@ from ingest import (
     transform_batch,
 )
 from ingest.config import MAX_PAGES, PAGE_SIZE
+from app.api.routes.policy.cache import bump_policy_cache_version
 
 EXIT_OK = 0
 EXIT_ERROR = 1
@@ -109,6 +110,10 @@ def _run_load(args, *, dry_run: bool) -> int:
             dry_run=dry_run,
         )
     print(f"⑤ {result.summary()}")
+    # 실적재 성공 = 조회 데이터 변경 → 정책 응답 캐시 전체 무효화(버전 bump).
+    # 만료 스킵이어도 UPSERT는 커밋됐으므로 bump 대상. REDIS_URL 미설정이면 무동작(False).
+    if not dry_run and bump_policy_cache_version():
+        print("⑥ 정책 응답 캐시 무효화(버전 bump)")
     # 만료율 캡 트립(reason 존재) = 부분수집/빈입력 의심 이상신호 → 운영자 분기용 종료코드
     if result.expire_skip_reason:
         print(f"⚠ 만료 스킵(이상): {result.expire_skip_reason}", file=sys.stderr)

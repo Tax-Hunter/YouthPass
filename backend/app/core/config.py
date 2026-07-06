@@ -34,6 +34,9 @@ class Settings(BaseSettings):
                 self.FRONTEND_URL = origins[0]
         return self
 
+    # 빈값이면 Redis 기능(정책 응답 캐시 등) 전체가 조용히 비활성 — 로컬/미구성 환경 기본
+    REDIS_URL: str = Field(default="", description="Redis 연결 URL (Railway Redis의 REDIS_URL)")
+
     YOUTH_API_KEY: str = ""
     # 온통청년 getPlcy 현행 엔드포인트 (수집 파이프라인 client가 사용). 구 opi/empInt.do에서 교정.
     YOUTH_API_BASE_URL: str = "https://www.youthcenter.go.kr/go/ythip/getPlcy"
