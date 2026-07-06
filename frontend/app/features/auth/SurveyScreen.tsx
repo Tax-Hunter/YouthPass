@@ -115,7 +115,6 @@ export default function SurveyScreen({ onNavigate }: ScreenProps) {
   const [specialConditions, setSpecialConditions] = useState<SpecialCondition[]>(
     user?.special_conditions ?? [],
   );
-  const [nickname, setNickname] = useState(user?.nickname ?? "");
   const [termsAgreed, setTermsAgreed] = useState(
     user?.survey_completed ?? false,
   );
@@ -167,7 +166,8 @@ export default function SurveyScreen({ onNavigate }: ScreenProps) {
         const url = isEditMode
           ? `${BASE}/users/put/me`
           : `${BASE}/users/post/survey`;
-        const trimmedNickname = nickname.trim();
+        // 닉네임은 설문에서 별도로 받지 않고 구글 로그인 때 채워진 값을 그대로 사용
+        // (SurveyRequest(POST)는 nickname이 필수(Field(..., min_length=2))라 항상 보내야 함)
         const surveyFields = {
           age: Number(age),
           region_city: city,
@@ -178,8 +178,7 @@ export default function SurveyScreen({ onNavigate }: ScreenProps) {
           // 복구 시 여기 되돌리기 — workflow/9_feat/phase6_설문정책매칭.md 참고
           // income_level: 소득 질문 자체를 설문에서 제거(대부분 정책이 소득무관/기타라 매칭에 거의
           // 영향을 못 줘 무의미하다고 판단) — 같은 문서 참고
-          // 2자 미만이면 보내지 않음 → 구글 로그인 때 채워진 기존 닉네임 유지
-          ...(trimmedNickname.length >= 2 && { nickname: trimmedNickname }),
+          ...(user.nickname && { nickname: user.nickname }),
         };
         const body = isEditMode
           ? surveyFields
@@ -202,7 +201,14 @@ export default function SurveyScreen({ onNavigate }: ScreenProps) {
           return;
         } else {
           const data = await res.json().catch(() => ({}));
-          setError(data?.detail ?? "제출 중 오류가 발생했습니다.");
+          // FastAPI 422는 detail이 문자열이 아니라 에러 객체 배열이라 그대로 렌더하면 크래시남
+          const detail = data?.detail;
+          const message = typeof detail === "string"
+            ? detail
+            : Array.isArray(detail)
+              ? detail.map((d) => d?.msg).filter(Boolean).join(", ")
+              : null;
+          setError(message || "제출 중 오류가 발생했습니다.");
           setIsSubmitting(false);
           return;
         }
@@ -213,7 +219,7 @@ export default function SurveyScreen({ onNavigate }: ScreenProps) {
       }
     }
 
-    go("list");
+    go("search");
   };
 
   const goNext = () => {
@@ -271,11 +277,11 @@ export default function SurveyScreen({ onNavigate }: ScreenProps) {
       <Header
         isLocationHeader
         onBack={() => step > 1 ? setStep((s) => s - 1) : go("back")}
-        onSkip={() => go("list")}
+        onSkip={() => go("search")}
       />
 
       {/* Step indicator: segmented progress bar + step count */}
-      <div className="px-6 pt-6 pb-1 shrink-0">
+      <div className="px-screen pt-6 pb-1 shrink-0">
         <div className="flex items-center gap-2 mb-4">
           <div className="flex-1 flex gap-1.5">
             {Array.from({ length: TOTAL_STEPS }).map((_, i) => (
@@ -300,7 +306,7 @@ export default function SurveyScreen({ onNavigate }: ScreenProps) {
       </div>
 
       {/* Content */}
-      <div key={step} className="flex-1 overflow-y-auto px-6 pb-4 animate-fade-in">
+      <div key={step} className="flex-1 min-h-0 overflow-y-auto px-screen pb-4 animate-fade-in">
         {/* Step 1: 나이 */}
         {step === 1 && (
           <div className="pt-2">
@@ -315,7 +321,7 @@ export default function SurveyScreen({ onNavigate }: ScreenProps) {
                 onKeyDown={(e) => e.key === "Enter" && goNext()}
                 placeholder="25"
                 autoFocus
-                className="w-full pl-5 pr-11 py-3.5 bg-slate-50 border border-slate-200 focus:border-blue-500 focus:bg-white rounded-2xl outline-none text-[14.5px] font-semibold text-slate-900 transition-all"
+                className="w-full pl-5 pr-11 py-3.5 bg-slate-50 border border-slate-200 focus:border-blue-500 focus:bg-white rounded-2xl outline-none text-base font-semibold text-slate-900 transition-all"
               />
               <span className="absolute right-5 top-1/2 -translate-y-1/2 text-[12px] font-bold text-slate-400 pointer-events-none">
                 세
@@ -558,17 +564,6 @@ export default function SurveyScreen({ onNavigate }: ScreenProps) {
                 </button>
               );
             })}
-            <div className="mt-2.5">
-              <p className="text-[11px] font-bold text-slate-400 mb-1.5">닉네임 (선택, 2~10자)</p>
-              <input
-                type="text"
-                value={nickname}
-                onChange={(e) => setNickname(e.target.value)}
-                placeholder="닉네임 입력"
-                maxLength={10}
-                className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 focus:border-blue-500 focus:bg-white rounded-2xl outline-none text-[14.5px] font-semibold text-slate-900 transition-all"
-              />
-            </div>
             <button
               onClick={() => setTermsAgreed((v) => !v)}
               className="flex items-start gap-3 text-left p-4 bg-slate-50 border border-slate-200 rounded-2xl hover:bg-white transition-colors"
@@ -609,7 +604,7 @@ export default function SurveyScreen({ onNavigate }: ScreenProps) {
       </div>
 
       {/* Footer */}
-      <footer className="px-6 pb-10 pt-4 shrink-0 border-t border-slate-50">
+      <footer className="px-screen pb-10 pt-4 shrink-0 border-t border-slate-50">
         <button
           onClick={goNext}
           disabled={!canNext() || isSubmitting}
