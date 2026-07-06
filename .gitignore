@@ -13,6 +13,9 @@ workflow/
 .env.*
 !.env.example
 
+# 로컬 HTTPS 인증서
+backend/certs/
+
 # Python
 backend/venv/
 backend/.venv/
