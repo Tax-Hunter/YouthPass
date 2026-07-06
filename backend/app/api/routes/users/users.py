@@ -1,7 +1,9 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from botocore.exceptions import BotoCoreError, ClientError
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, status
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user
+from app.core.storage import ALLOWED_EXTENSIONS, MAX_FILE_SIZE_BYTES, upload_profile_image
 from app.db.session import get_db
 from app.db.models.user import User
 from app.schemas.user import ProfileUpdateRequest, SurveyRequest, UserResponse
@@ -25,6 +27,40 @@ def update_me(
     db.commit()
     db.refresh(current_user)
     return current_user
+
+
+@router.post("/post/profile-image")
+async def upload_profile_image_endpoint(
+    file: UploadFile,
+    current_user: User = Depends(get_current_user),
+):
+    ext = file.filename.rsplit(".", 1)[-1].lower() if file.filename and "." in file.filename else ""
+    if ext not in ALLOWED_EXTENSIONS:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="jpg, png, webp 형식의 이미지만 업로드할 수 있습니다.",
+        )
+
+    content = await file.read()
+    if len(content) > MAX_FILE_SIZE_BYTES:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="이미지 용량은 5MB를 초과할 수 없습니다.",
+        )
+
+    try:
+        url = upload_profile_image(
+            user_id=str(current_user.id),
+            filename=file.filename,
+            content=content,
+            content_type=file.content_type or "application/octet-stream",
+        )
+    except (BotoCoreError, ClientError):
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="이미지 저장소 연결에 실패했습니다. 잠시 후 다시 시도해주세요.",
+        )
+    return {"profile_image": url}
 
 
 @router.post("/post/survey", response_model=UserResponse)

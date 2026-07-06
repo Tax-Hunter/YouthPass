@@ -37,6 +37,12 @@ class Settings(BaseSettings):
     # 빈값이면 Redis 기능(정책 응답 캐시 등) 전체가 조용히 비활성 — 로컬/미구성 환경 기본
     REDIS_URL: str = Field(default="", description="Redis 연결 URL (Railway Redis의 REDIS_URL)")
 
+    R2_ACCOUNT_ID: str = Field(default="", description="Cloudflare R2 계정 ID")
+    R2_ACCESS_KEY_ID: str = Field(default="", description="R2 API 액세스 키")
+    R2_SECRET_ACCESS_KEY: str = Field(default="", description="R2 API 시크릿 키")
+    R2_BUCKET_NAME: str = Field(default="", description="R2 버킷 이름")
+    R2_PUBLIC_BASE_URL: str = Field(default="", description="R2 버킷에 연결된 퍼블릭 도메인 (업로드 결과 URL 조합에 사용)")
+
     YOUTH_API_KEY: str = ""
     # 온통청년 getPlcy 현행 엔드포인트 (수집 파이프라인 client가 사용). 구 opi/empInt.do에서 교정.
     YOUTH_API_BASE_URL: str = "https://www.youthcenter.go.kr/go/ythip/getPlcy"
