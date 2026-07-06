@@ -559,13 +559,13 @@ export default function SurveyScreen({ onNavigate }: ScreenProps) {
               );
             })}
             <div className="mt-2.5">
-              <p className="text-[11px] font-bold text-slate-400 mb-1.5">닉네임 (선택, 2~10자)</p>
+              <p className="text-[11px] font-bold text-slate-400 mb-1.5">닉네임 (선택, 2~12자)</p>
               <input
                 type="text"
                 value={nickname}
                 onChange={(e) => setNickname(e.target.value)}
                 placeholder="닉네임 입력"
-                maxLength={10}
+                maxLength={12}
                 className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 focus:border-blue-500 focus:bg-white rounded-2xl outline-none text-[14.5px] font-semibold text-slate-900 transition-all"
               />
             </div>
