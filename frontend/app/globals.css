@@ -28,11 +28,23 @@ body {
 @utility pt-header-list {
   padding-top: calc(5.25rem + env(safe-area-inset-top, 0px));
 }
+@utility top-header {
+  top: calc(4.75rem + env(safe-area-inset-top, 0px));
+}
+@utility top-header-min {
+  top: calc(3.375rem + env(safe-area-inset-top, 0px));
+}
 @utility pb-safe {
   padding-bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
 }
 @utility pb-safe-xl {
   padding-bottom: calc(2rem + env(safe-area-inset-bottom, 0px));
+}
+
+/* Screen Layout Utility — 화면 좌우 여백 통일 (변경 시 여기 한 곳만 수정) */
+@utility px-screen {
+  padding-left: 1.5rem;
+  padding-right: 1.5rem;
 }
 
 /* Custom Keyframe Animations */

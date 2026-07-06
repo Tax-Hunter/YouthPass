@@ -38,9 +38,9 @@ export default function LocationScreen({ onNavigate }: ScreenProps) {
   };
 
   return (
-    <div className="flex flex-col h-full bg-white text-slate-800 font-sans select-none overflow-hidden relative pt-[76px]">
+    <div className="flex flex-col h-full bg-white text-slate-800 font-sans select-none overflow-hidden relative">
       {/* Content Area */}
-      <div className="flex-1 overflow-y-auto px-6 py-6 flex flex-col justify-start min-h-[320px]">
+      <div className="flex-1 min-h-0 overflow-y-auto pt-header px-screen py-6 flex flex-col justify-start">
         {/* Step Indicator */}
         <div className="flex items-center gap-1 text-sm font-extrabold text-blue-600 mb-4">
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -93,7 +93,7 @@ export default function LocationScreen({ onNavigate }: ScreenProps) {
       </div>
 
       {/* Next Step Action Button */}
-      <footer className="px-6 pb-10 shrink-0">
+      <footer className="px-screen pb-10 shrink-0">
         <button
           onClick={() => selectedRegion && onNavigate?.("mypage")}
           onMouseEnter={() => {
