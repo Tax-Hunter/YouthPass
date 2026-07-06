@@ -98,8 +98,7 @@ export default function EditProfileModal({ onClose }: EditProfileModalProps) {
       />
 
       {/* Modal Card */}
-      <div className="relative w-full sm:mx-6 bg-white rounded-t-3xl sm:rounded-3xl px-6 pt-8 pb-10 shadow-2xl animate-slide-up">
-        <h3 className="text-[17px] font-bold text-slate-900 text-center mb-6">프로필 수정</h3>
+      <div className="relative w-full sm:mx-6 bg-white rounded-t-3xl sm:rounded-3xl px-6 pt-10 pb-10 shadow-2xl animate-slide-up">
 
         {/* Profile Photo */}
         <div className="flex justify-center mb-6">
@@ -148,25 +147,27 @@ export default function EditProfileModal({ onClose }: EditProfileModalProps) {
               value={nickname}
               onChange={(e) => setNickname(e.target.value.slice(0, NICKNAME_MAX))}
               maxLength={NICKNAME_MAX}
-              className="w-full py-3 pl-4 pr-10 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 focus:outline-none focus:border-blue-500"
-              placeholder="닉네임을 입력해주세요"
+              className="w-full py-3 pl-4 pr-16 bg-slate-50 border border-slate-200 rounded-xl text-[10px] font-semibold text-slate-800 focus:outline-none focus:border-blue-500"
+              placeholder="새로운 닉네임을 입력해주세요"
             />
             {nickname && (
-              <button
-                type="button"
-                onClick={() => setNickname("")}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-300 hover:text-slate-500"
-                aria-label="닉네임 지우기"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
+              <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1.5">
+                <span className="text-[11px] text-slate-400 font-medium">
+                  {nickname.trim().length}/{NICKNAME_MAX}자
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setNickname("")}
+                  className="text-slate-300 hover:text-slate-500"
+                  aria-label="닉네임 지우기"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
             )}
           </div>
-          <p className="text-[11px] text-slate-400 font-medium mt-1.5">
-            {nickname.trim().length}/{NICKNAME_MAX}자 ({NICKNAME_MIN}~{NICKNAME_MAX}자)
-          </p>
         </div>
 
         {/* Account Info (read-only) */}
@@ -177,7 +178,7 @@ export default function EditProfileModal({ onClose }: EditProfileModalProps) {
           </div>
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-slate-400">연동 계정</span>
-            <span className="text-xs font-bold text-slate-700">구글 계정으로 연결됨</span>
+            <span className="text-xs font-bold text-slate-700">Google 계정</span>
           </div>
         </div>
 
