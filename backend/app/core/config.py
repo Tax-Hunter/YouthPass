@@ -34,6 +34,9 @@ class Settings(BaseSettings):
                 self.FRONTEND_URL = origins[0]
         return self
 
+    # 빈값이면 Redis 기능(정책 응답 캐시 등) 전체가 조용히 비활성 — 로컬/미구성 환경 기본
+    REDIS_URL: str = Field(default="", description="Redis 연결 URL (Railway Redis의 REDIS_URL)")
+
     R2_ACCOUNT_ID: str = Field(default="", description="Cloudflare R2 계정 ID")
     R2_ACCESS_KEY_ID: str = Field(default="", description="R2 API 액세스 키")
     R2_SECRET_ACCESS_KEY: str = Field(default="", description="R2 API 시크릿 키")
