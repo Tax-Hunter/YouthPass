@@ -25,7 +25,7 @@ class UserResponse(BaseModel):
 
 
 class SurveyRequest(BaseModel):
-    nickname: str = Field(..., min_length=2, max_length=10)
+    nickname: str = Field(..., min_length=2, max_length=12)
     age: Optional[int] = Field(None, ge=14, le=39)
     region_city: Optional[str] = None
     region_district: Optional[str] = None
@@ -38,7 +38,7 @@ class SurveyRequest(BaseModel):
 
 
 class ProfileUpdateRequest(BaseModel):
-    nickname: Optional[str] = Field(None, min_length=2, max_length=10)
+    nickname: Optional[str] = Field(None, min_length=2, max_length=12)
     age: Optional[int] = Field(None, ge=14, le=39)
     region_city: Optional[str] = None
     region_district: Optional[str] = None
@@ -47,3 +47,4 @@ class ProfileUpdateRequest(BaseModel):
     income_level: Optional[str] = None
     household_type: Optional[str] = None
     notification_enabled: Optional[bool] = None
+    profile_image: Optional[str] = None
