@@ -15,6 +15,105 @@ import Header from "@/app/components/layout/Header";
 
 const TOTAL_STEPS = 6;
 
+// 공통 svg 아이콘 래퍼 (fill=none, stroke=currentColor, viewBox 24)
+function Icon({
+  className,
+  children,
+}: {
+  className?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      {children}
+    </svg>
+  );
+}
+
+// strokeLinecap/strokeLinejoin/strokeWidth=2 기본값을 가진 path (체크 아이콘만 3으로 override)
+function IconPath({ d, strokeWidth = 2 }: { d: string; strokeWidth?: number }) {
+  return (
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={strokeWidth}
+      d={d}
+    />
+  );
+}
+
+function CheckIcon({ className = "w-3 h-3 text-white" }: { className?: string }) {
+  return (
+    <Icon className={className}>
+      <IconPath d="M5 13l4 4L19 7" strokeWidth={3} />
+    </Icon>
+  );
+}
+
+// 옵션 버튼의 선택 인디케이터 (circle: 단일선택, square: 다중선택/약관)
+function SelectIndicator({
+  active,
+  shape = "circle",
+  className = "",
+}: {
+  active: boolean;
+  shape?: "circle" | "square";
+  className?: string;
+}) {
+  return (
+    <div
+      className={`w-5 h-5 shrink-0 border-2 flex items-center justify-center transition-colors ${
+        shape === "circle" ? "rounded-full" : "rounded-md"
+      } ${active ? "bg-blue-600 border-blue-600" : "border-slate-300"} ${className}`}
+    >
+      {active && <CheckIcon />}
+    </div>
+  );
+}
+
+// step3(icon+desc)/step4/step5/step6 옵션 버튼 공통 구조
+function OptionButton({
+  label,
+  desc,
+  active,
+  onClick,
+  shape = "circle",
+  icon,
+}: {
+  label: string;
+  desc?: string;
+  active: boolean;
+  onClick: () => void;
+  shape?: "circle" | "square";
+  icon?: React.ReactNode;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={`w-full flex items-center gap-3 ${icon ? "p-4" : "px-5 py-4"} rounded-2xl border text-left transition-all active:scale-[0.98] ${
+        active
+          ? "border-blue-500 bg-blue-50/60"
+          : "border-slate-200 bg-slate-50 hover:border-blue-200 hover:bg-white"
+      }`}
+    >
+      {icon}
+      <div className="flex-1 min-w-0">
+        <p
+          className={`${desc ? "text-[14px]" : "text-[14.5px]"} font-bold ${active ? "text-blue-700" : "text-slate-800"}`}
+        >
+          {label}
+        </p>
+        {desc && (
+          <p className="text-[11.5px] text-slate-400 font-medium mt-0.5">
+            {desc}
+          </p>
+        )}
+      </div>
+      <SelectIndicator active={active} shape={shape} />
+    </button>
+  );
+}
+
 const CATEGORIES = [
   { key: "주거", label: "주거", desc: "월세·전세·임대주택" },
   { key: "금융", label: "금융", desc: "저축·대출·자산형성" },
@@ -28,64 +127,34 @@ const CATEGORY_STYLE: Record<string, { color: string; path: React.ReactNode }> =
     주거: {
       color: "bg-blue-50 text-blue-600",
       path: (
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth="2"
-          d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"
-        />
+        <IconPath d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
       ),
     },
     금융: {
       color: "bg-teal-50 text-teal-600",
       path: (
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth="2"
-          d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"
-        />
+        <IconPath d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
       ),
     },
     일자리: {
       color: "bg-indigo-50 text-indigo-600",
       path: (
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth="2"
-          d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
-        />
+        <IconPath d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
       ),
     },
     교육: {
       color: "bg-amber-50 text-amber-600",
       path: (
         <>
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth="2"
-            d="M12 14l9-5-9-5-9 5 9 5z"
-          />
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth="2"
-            d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z"
-          />
+          <IconPath d="M12 14l9-5-9-5-9 5 9 5z" />
+          <IconPath d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z" />
         </>
       ),
     },
     생활: {
       color: "bg-rose-50 text-rose-600",
       path: (
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth="2"
-          d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
-        />
+        <IconPath d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
       ),
     },
   };
@@ -116,15 +185,6 @@ const CONDITION_OPTIONS: { slug: SpecialCondition; label: string }[] = [
   { slug: "local_talent", label: "지역인재" },
   { slug: "sme_employee", label: "중소기업 재직" },
 ];
-
-const CHECK_PATH = (
-  <path
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    strokeWidth="3"
-    d="M5 13l4 4L19 7"
-  />
-);
 
 interface ScreenProps {
   onNavigate?: (screenId: string) => void;
@@ -422,19 +482,11 @@ export default function SurveyScreen({ onNavigate }: ScreenProps) {
               <span className={city ? "text-slate-900" : "text-slate-400"}>
                 {city || "시/도 선택"}
               </span>
-              <svg
+              <Icon
                 className={`w-5 h-5 text-slate-400 transition-transform duration-200 ${isCityOpen ? "rotate-180 text-blue-500" : ""}`}
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
               >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                  d="M19 9l-7 7-7-7"
-                />
-              </svg>
+                <IconPath d="M19 9l-7 7-7-7" />
+              </Icon>
             </button>
             {isCityOpen && (
               <div
@@ -473,56 +525,20 @@ export default function SurveyScreen({ onNavigate }: ScreenProps) {
               const active = selectedCategories[key];
               const style = CATEGORY_STYLE[key];
               return (
-                <button
+                <OptionButton
                   key={key}
+                  label={label}
+                  desc={desc}
+                  active={active}
                   onClick={() => toggleCategory(key)}
-                  className={`w-full flex items-center gap-3 p-4 rounded-2xl border text-left transition-all active:scale-[0.98] ${
-                    active
-                      ? "border-blue-500 bg-blue-50/60"
-                      : "border-slate-200 bg-slate-50 hover:border-blue-200 hover:bg-white"
-                  }`}
-                >
-                  <div
-                    className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${style.color}`}
-                  >
-                    <svg
-                      className="w-5 h-5"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
+                  icon={
+                    <div
+                      className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${style.color}`}
                     >
-                      {style.path}
-                    </svg>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p
-                      className={`text-[14px] font-bold ${active ? "text-blue-700" : "text-slate-800"}`}
-                    >
-                      {label}
-                    </p>
-                    <p className="text-[11.5px] text-slate-400 font-medium mt-0.5">
-                      {desc}
-                    </p>
-                  </div>
-                  <div
-                    className={`w-5 h-5 shrink-0 rounded-full border-2 flex items-center justify-center transition-colors ${
-                      active
-                        ? "bg-blue-600 border-blue-600"
-                        : "border-slate-300"
-                    }`}
-                  >
-                    {active && (
-                      <svg
-                        className="w-3 h-3 text-white"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        {CHECK_PATH}
-                      </svg>
-                    )}
-                  </div>
-                </button>
+                      <Icon className="w-5 h-5">{style.path}</Icon>
+                    </div>
+                  }
+                />
               );
             })}
           </div>
@@ -531,186 +547,58 @@ export default function SurveyScreen({ onNavigate }: ScreenProps) {
         {/* Step 4: 현재 상황 (단일 선택) */}
         {step === 4 && (
           <div className="pt-2 flex flex-col gap-2.5">
-            {EMPLOYMENT_OPTIONS.map(({ slug, label }) => {
-              const active = employmentStatus === slug;
-              return (
-                <button
-                  key={slug}
-                  onClick={() => setEmploymentStatus(slug)}
-                  className={`w-full flex items-center justify-between px-5 py-4 rounded-2xl border text-left transition-all active:scale-[0.98] ${
-                    active
-                      ? "border-blue-500 bg-blue-50/60"
-                      : "border-slate-200 bg-slate-50 hover:border-blue-200 hover:bg-white"
-                  }`}
-                >
-                  <span
-                    className={`text-[14.5px] font-bold ${active ? "text-blue-700" : "text-slate-800"}`}
-                  >
-                    {label}
-                  </span>
-                  <div
-                    className={`w-5 h-5 shrink-0 rounded-full border-2 flex items-center justify-center transition-colors ${
-                      active
-                        ? "bg-blue-600 border-blue-600"
-                        : "border-slate-300"
-                    }`}
-                  >
-                    {active && (
-                      <svg
-                        className="w-3 h-3 text-white"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        {CHECK_PATH}
-                      </svg>
-                    )}
-                  </div>
-                </button>
-              );
-            })}
+            {EMPLOYMENT_OPTIONS.map(({ slug, label }) => (
+              <OptionButton
+                key={slug}
+                label={label}
+                active={employmentStatus === slug}
+                onClick={() => setEmploymentStatus(slug)}
+              />
+            ))}
           </div>
         )}
 
         {/* Step 5: 학력 (단일 선택) */}
         {step === 5 && (
           <div className="pt-2 flex flex-col gap-2.5">
-            {EDUCATION_OPTIONS.map(({ slug, label }) => {
-              const active = educationLevel === slug;
-              return (
-                <button
-                  key={slug}
-                  onClick={() => setEducationLevel(slug)}
-                  className={`w-full flex items-center justify-between px-5 py-4 rounded-2xl border text-left transition-all active:scale-[0.98] ${
-                    active
-                      ? "border-blue-500 bg-blue-50/60"
-                      : "border-slate-200 bg-slate-50 hover:border-blue-200 hover:bg-white"
-                  }`}
-                >
-                  <span
-                    className={`text-[14.5px] font-bold ${active ? "text-blue-700" : "text-slate-800"}`}
-                  >
-                    {label}
-                  </span>
-                  <div
-                    className={`w-5 h-5 shrink-0 rounded-full border-2 flex items-center justify-center transition-colors ${
-                      active
-                        ? "bg-blue-600 border-blue-600"
-                        : "border-slate-300"
-                    }`}
-                  >
-                    {active && (
-                      <svg
-                        className="w-3 h-3 text-white"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        {CHECK_PATH}
-                      </svg>
-                    )}
-                  </div>
-                </button>
-              );
-            })}
+            {EDUCATION_OPTIONS.map(({ slug, label }) => (
+              <OptionButton
+                key={slug}
+                label={label}
+                active={educationLevel === slug}
+                onClick={() => setEducationLevel(slug)}
+              />
+            ))}
           </div>
         )}
 
         {/* Step 6: 해당되는 조건 (복수 선택) + 닉네임 + 약관 동의 */}
         {step === 6 && (
           <div className="pt-2 flex flex-col gap-2.5">
-            <button
+            <OptionButton
+              label="없음"
+              active={specialConditions.length === 0}
               onClick={() => setSpecialConditions([])}
-              className={`w-full flex items-center justify-between px-5 py-4 rounded-2xl border text-left transition-all active:scale-[0.98] ${
-                specialConditions.length === 0
-                  ? "border-blue-500 bg-blue-50/60"
-                  : "border-slate-200 bg-slate-50 hover:border-blue-200 hover:bg-white"
-              }`}
-            >
-              <span
-                className={`text-[14.5px] font-bold ${specialConditions.length === 0 ? "text-blue-700" : "text-slate-800"}`}
-              >
-                없음
-              </span>
-              <div
-                className={`w-5 h-5 shrink-0 rounded-md border-2 flex items-center justify-center transition-colors ${
-                  specialConditions.length === 0
-                    ? "bg-blue-600 border-blue-600"
-                    : "border-slate-300"
-                }`}
-              >
-                {specialConditions.length === 0 && (
-                  <svg
-                    className="w-3 h-3 text-white"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    {CHECK_PATH}
-                  </svg>
-                )}
-              </div>
-            </button>
-            {CONDITION_OPTIONS.map(({ slug, label }) => {
-              const active = specialConditions.includes(slug);
-              return (
-                <button
-                  key={slug}
-                  onClick={() => toggleCondition(slug)}
-                  className={`w-full flex items-center justify-between px-5 py-4 rounded-2xl border text-left transition-all active:scale-[0.98] ${
-                    active
-                      ? "border-blue-500 bg-blue-50/60"
-                      : "border-slate-200 bg-slate-50 hover:border-blue-200 hover:bg-white"
-                  }`}
-                >
-                  <span
-                    className={`text-[14.5px] font-bold ${active ? "text-blue-700" : "text-slate-800"}`}
-                  >
-                    {label}
-                  </span>
-                  <div
-                    className={`w-5 h-5 shrink-0 rounded-md border-2 flex items-center justify-center transition-colors ${
-                      active
-                        ? "bg-blue-600 border-blue-600"
-                        : "border-slate-300"
-                    }`}
-                  >
-                    {active && (
-                      <svg
-                        className="w-3 h-3 text-white"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        {CHECK_PATH}
-                      </svg>
-                    )}
-                  </div>
-                </button>
-              );
-            })}
+              shape="square"
+            />
+            {CONDITION_OPTIONS.map(({ slug, label }) => (
+              <OptionButton
+                key={slug}
+                label={label}
+                active={specialConditions.includes(slug)}
+                onClick={() => toggleCondition(slug)}
+                shape="square"
+              />
+            ))}
             <button
               onClick={() => setTermsAgreed((v) => !v)}
               className="flex items-start gap-3 text-left p-4 bg-slate-50 border border-slate-200 rounded-2xl hover:bg-white transition-colors"
             >
-              <div
-                className={`mt-0.5 w-5 h-5 shrink-0 rounded-md border-2 flex items-center justify-center transition-colors ${
-                  termsAgreed
-                    ? "bg-blue-600 border-blue-600"
-                    : "border-slate-300"
-                }`}
-              >
-                {termsAgreed && (
-                  <svg
-                    className="w-3 h-3 text-white"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    {CHECK_PATH}
-                  </svg>
-                )}
-              </div>
+              <SelectIndicator
+                active={termsAgreed}
+                shape="square"
+                className="mt-0.5"
+              />
               <span className="text-[13px] text-slate-600 font-medium leading-relaxed">
                 서비스 이용약관 및 개인정보 처리방침에 동의합니다{" "}
                 <span className="text-blue-600 font-bold">(필수)</span>
