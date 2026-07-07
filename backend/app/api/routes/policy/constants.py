@@ -24,6 +24,9 @@ APLY_PRD_CLOSED = "0057003"   # 마감
 # category 미분류(NULL) 폴백 라벨
 CATEGORY_FALLBACK = "기타"
 
+# 찜 목록 공유 링크(bookmark_shares) 만료 기간
+SHARE_LINK_EXPIRY_DAYS = 30
+
 # raw_data 텍스트(정제 전 원본)의 placeholder → 정보 없음으로 간주
 RAW_PLACEHOLDERS = {
     "-", ".", "해당없음", "해당 없음", "해당사항없음", "해당사항 없음",
