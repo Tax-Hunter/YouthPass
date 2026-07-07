@@ -6,6 +6,7 @@ import { usePolicyDetail } from "@/lib/api/policy";
 import type { PolicyCardData } from "@/lib/api/policy";
 import PolicyCard from "@/app/components/ui/PolicyCard";
 import OptionButton from "@/app/components/ui/OptionButton";
+import ShareButton from "@/app/components/ui/ShareButton";
 
 interface ScreenProps {
   onNavigate?: (screenId: string) => void;
@@ -79,7 +80,6 @@ export default function BookmarkedScreen({ onNavigate }: ScreenProps) {
     isBookmarked,
   } = useBookmarkStore();
   const [activeTag, setActiveTag] = useState("전체");
-  const [copied, setCopied] = useState(false);
 
   const tags = ["전체", "#주거", "#금융", "#일자리", "#교육"];
 
@@ -87,76 +87,19 @@ export default function BookmarkedScreen({ onNavigate }: ScreenProps) {
     onNavigate?.(`detail?id=${plcy_no}`);
   };
 
-  const handleShare = async () => {
-    const url = window.location.href;
-    try {
-      await navigator.clipboard.writeText(url);
-    } catch {
-      const el = document.createElement("textarea");
-      el.value = url;
-      el.style.position = "fixed";
-      el.style.opacity = "0";
-      document.body.appendChild(el);
-      el.select();
-      document.execCommand("copy");
-      document.body.removeChild(el);
-    }
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1500);
-  };
-
   return (
-    <div className="flex flex-col h-full bg-white text-slate-800 font-sans select-none overflow-y-auto pt-header">
+    <div className="flex flex-col h-full bg-white text-slate-800 font-sans select-none overflow-y-auto scroll-stable pt-header">
       {/* Title & Share */}
       <div className="px-6 pt-5 pb-3 flex items-center justify-between shrink-0">
         <h2 className="text-xl font-bold text-slate-900 flex items-center gap-1.5">
           찜한 정책
           <span className="text-blue-600 font-mono">{bookmarks.length}</span>
         </h2>
-        <button
-          onClick={handleShare}
-          className={`text-xs font-bold flex items-center gap-1 transition-colors ${copied ? "text-emerald-500" : "text-blue-600 hover:underline"}`}
-        >
-          {copied ? (
-            <>
-              <svg
-                className="w-3.5 h-3.5"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2.5"
-                  d="M5 13l4 4L19 7"
-                />
-              </svg>
-              복사됨
-            </>
-          ) : (
-            <>
-              <svg
-                className="w-3.5 h-3.5"
-                fill="none"
-                strokeWidth="1.5"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M7.217 10.907a2.25 2.25 0 1 0 0 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186 9.566-5.314m-9.566 7.5 9.566 5.314m0 0a2.25 2.25 0 1 0 3.935 2.186 2.25 2.25 0 0 0-3.935-2.186Zm0-12.814a2.25 2.25 0 1 0 3.933-2.185 2.25 2.25 0 0 0-3.933 2.185Z"
-                />
-              </svg>
-              공유
-            </>
-          )}
-        </button>
+        <ShareButton className="text-xs font-bold" />
       </div>
 
       {/* Filter Hashtags */}
-      <div className="px-6 py-2.5 flex gap-2 overflow-x-auto shrink-0 scrollbar-none">
+      <div className="px-6 py-2.5 flex flex-wrap gap-2 shrink-0">
         {tags.map((tag) => (
           <OptionButton
             key={tag}
