@@ -1,7 +1,7 @@
 from datetime import date, datetime
 from typing import List, Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class PolicyCard(BaseModel):
@@ -99,3 +99,12 @@ class PolicyDetail(BaseModel):
     contact: Optional[str] = None          # 문의처/담당 부서
     ref_urls: List[str] = []               # 참고 링크
     biz_period: Optional[str] = None       # 사업 기간(신청기간과 별개)
+
+
+class ShareCreateRequest(BaseModel):
+    plcy_nos: List[str] = Field(min_length=1, max_length=50)  # 공유할 찜 목록(클라이언트 스냅샷)
+
+
+class ShareCreateResponse(BaseModel):
+    share_code: str
+    expires_at: datetime

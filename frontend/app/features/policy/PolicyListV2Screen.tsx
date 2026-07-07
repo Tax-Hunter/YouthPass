@@ -14,7 +14,7 @@ export default function PolicyListV2Screen({ onNavigate }: ScreenProps) {
   return (
     <div className="flex flex-col h-full bg-slate-50 text-slate-800 font-sans select-none overflow-hidden relative">
       {/* Main Skeleton List */}
-      <div className="flex-1 overflow-y-auto px-5 pb-24 pt-[96px] space-y-4 animate-pulse">
+      <div className="flex-1 overflow-y-auto scroll-stable px-5 pb-24 pt-[96px] space-y-4 animate-pulse">
         {/* Card 1: Housing */}
         <div className="p-5 bg-white border border-slate-100 rounded-2xl shadow-sm">
           <div className="flex items-center justify-between mb-4">

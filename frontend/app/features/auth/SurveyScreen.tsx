@@ -434,7 +434,7 @@ export default function SurveyScreen({ onNavigate }: ScreenProps) {
       {/* Content */}
       <div
         key={step}
-        className="flex-1 min-h-0 overflow-y-auto px-screen pb-4 animate-fade-in"
+        className="flex-1 min-h-0 overflow-y-auto scroll-stable px-screen pb-4 animate-fade-in"
       >
         {/* Step 1: 나이 */}
         {step === 1 && (
@@ -496,7 +496,7 @@ export default function SurveyScreen({ onNavigate }: ScreenProps) {
                     setIsCityOpen(false);
                   }
                 }}
-                className="absolute top-full left-0 right-0 mt-1.5 max-h-56 overflow-y-auto bg-white border border-slate-100 rounded-2xl shadow-xl z-20 divide-y divide-slate-50"
+                className="absolute top-full left-0 right-0 mt-1.5 max-h-56 overflow-y-auto scroll-stable bg-white border border-slate-100 rounded-2xl shadow-xl z-20 divide-y divide-slate-50"
               >
                 {CITY_OPTIONS.map((c) => (
                   <button

@@ -26,7 +26,7 @@ export default function HomeScreen({ onNavigate }: ScreenProps) {
 
   return (
     <div className="flex flex-col h-full bg-slate-50 text-slate-800 font-sans select-none relative overflow-hidden">
-      <div className="flex-1 min-h-0 overflow-y-auto pt-header">
+      <div className="flex-1 min-h-0 overflow-y-auto pt-header scroll-stable">
       {/* Blue Hero Banner */}
       <div className="bg-blue-600 text-white px-screen pt-9 pb-8 flex flex-col items-start gap-4 shrink-0 shadow-inner relative overflow-hidden">
         <div className="absolute -top-12.5 -right-12.5 w-40 h-40 bg-white/10 rounded-full blur-2xl" />

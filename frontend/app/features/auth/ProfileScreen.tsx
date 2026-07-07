@@ -87,7 +87,7 @@ export default function ProfileScreen({ onNavigate, onClose }: ScreenProps) {
       </div>
 
       {/* Scrollable Menu Sections */}
-      <div className="flex-1 overflow-y-auto px-6 py-5 space-y-6 flex flex-col">
+      <div className="flex-1 overflow-y-auto scroll-stable px-6 py-5 space-y-6 flex flex-col">
 
         {/* Section 1: 메뉴 */}
         <div className="space-y-2.5">
