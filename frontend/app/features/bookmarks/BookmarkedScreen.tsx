@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useBookmarkStore } from "@/lib/store/bookmarkStore";
 import { usePolicyDetail } from "@/lib/api/policy";
 import type { PolicyCardData } from "@/lib/api/policy";
@@ -18,14 +18,21 @@ function BookmarkedCard({
   onToggleBookmark,
   onClick,
   activeTag,
+  onInvalid,
 }: {
   plcy_no: string;
   isBookmarked: boolean;
   onToggleBookmark: () => void;
   onClick: () => void;
   activeTag: string;
+  onInvalid: (plcy_no: string) => void;
 }) {
-  const { policy, isLoading } = usePolicyDetail(plcy_no);
+  const { policy, error, isLoading } = usePolicyDetail(plcy_no);
+
+  // 존재하지 않는 정책(삭제되었거나 레거시 id)은 찜 목록에서 자동으로 제거한다.
+  useEffect(() => {
+    if (error) onInvalid(plcy_no);
+  }, [error, plcy_no, onInvalid]);
 
   if (isLoading) {
     return (
@@ -143,6 +150,7 @@ export default function BookmarkedScreen({ onNavigate }: ScreenProps) {
               onToggleBookmark={() => toggleBookmark(plcy_no)}
               onClick={() => handleCardClick(plcy_no)}
               activeTag={activeTag}
+              onInvalid={toggleBookmark}
             />
           ))
         )}
