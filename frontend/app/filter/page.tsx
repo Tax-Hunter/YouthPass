@@ -7,11 +7,11 @@ import FilterScreen from "@/app/features/filter/FilterScreen";
 function FilterPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const from = searchParams.get("from") ?? "list";
+  const from = searchParams.get("from") ?? "search";
   return (
     <FilterScreen
       onNavigate={(screenId) =>
-        router.push(`/${screenId === "list" ? from : screenId}`)
+        router.push(`/${screenId === "search" ? from : screenId}`)
       }
     />
   );

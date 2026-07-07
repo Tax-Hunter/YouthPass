@@ -95,7 +95,7 @@ export default function ProfileScreen({ onNavigate, onClose }: ScreenProps) {
           <div className="space-y-1">
             {[
               { id: "home", label: "홈", icon: "home", color: "bg-blue-50 text-blue-600", requireAuth: false },
-              { id: "list", label: "정책 목록", icon: "list", color: "bg-slate-100 text-slate-600", requireAuth: false },
+              { id: "search", label: "정책 목록", icon: "list", color: "bg-slate-100 text-slate-600", requireAuth: false },
               { id: "mypage", label: "마이페이지", icon: "user", color: "bg-slate-100 text-slate-600", requireAuth: true },
             ].filter((item) => !item.requireAuth || !!user).map((item) => (
               <button
