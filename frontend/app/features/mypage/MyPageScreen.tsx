@@ -6,6 +6,7 @@ import { useBookmarkStore } from "@/lib/store/bookmarkStore";
 import { useAuthStore } from "@/lib/store/authStore";
 import { useFilterStore } from "@/lib/store/filterStore";
 import { useLogout } from "@/lib/useLogout";
+import EditProfileModal from "@/app/components/ui/EditProfileModal";
 
 interface ScreenProps {
   onNavigate?: (screenId: string) => void;
@@ -14,6 +15,7 @@ interface ScreenProps {
 export default function MyPageScreen({ onNavigate }: ScreenProps) {
   const router = useRouter();
   const [alertsEnabled, setAlertsEnabled] = useState(true);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const { bookmarks } = useBookmarkStore();
   const { user, isLoading } = useAuthStore();
   const { filters } = useFilterStore();
@@ -38,7 +40,7 @@ export default function MyPageScreen({ onNavigate }: ScreenProps) {
     : null;
 
   return (
-    <div className="flex flex-col h-full bg-white text-slate-800 font-sans select-none overflow-hidden">
+    <div className="relative flex flex-col h-full bg-white text-slate-800 font-sans select-none overflow-hidden">
       <div className="flex-1 overflow-y-auto min-h-112.5 flex flex-col pt-header">
       {/* Main Profile Header */}
       <div className="px-6 py-6 flex items-center gap-4 shrink-0">
@@ -56,7 +58,7 @@ export default function MyPageScreen({ onNavigate }: ScreenProps) {
             </svg>
           )}
         </div>
-        <div className="space-y-1">
+        <div className="space-y-1 flex-1">
           <h2 className="text-[17px] font-bold text-slate-900 leading-tight">
             {isLoading ? (
               <span className="inline-block w-24 h-4 bg-slate-200 rounded animate-pulse" />
@@ -72,6 +74,17 @@ export default function MyPageScreen({ onNavigate }: ScreenProps) {
             ) : null}
           </p>
         </div>
+        {!isLoading && user && (
+          <button
+            onClick={() => setIsEditModalOpen(true)}
+            className="shrink-0 w-9 h-9 rounded-full bg-slate-50 border border-slate-100 flex items-center justify-center text-slate-500 hover:text-blue-600 hover:border-blue-200 transition-colors active:scale-95"
+            aria-label="프로필 수정"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+            </svg>
+          </button>
+        )}
       </div>
 
       {/* Settings Card Blocks */}
@@ -159,6 +172,10 @@ export default function MyPageScreen({ onNavigate }: ScreenProps) {
       </div>
 
       </div>
+
+      {isEditModalOpen && (
+        <EditProfileModal onClose={() => setIsEditModalOpen(false)} />
+      )}
     </div>
   );
 }

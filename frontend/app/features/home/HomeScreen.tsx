@@ -17,7 +17,7 @@ export default function HomeScreen({ onNavigate }: ScreenProps) {
   const { toggle: toggleBookmark, isBookmarked } = useBookmarkStore();
   const [isSurveyOpen, setIsSurveyOpen] = useState(false);
 
-  const { data, isLoading } = usePolicyList({ sort: "deadline", size: 4, applicable: true });
+  const { data, error, isLoading } = usePolicyList({ sort: "deadline", size: 4, applicable: true });
   const sortedItems = data?.items ? sortPoliciesByDeadline(data.items) : [];
 
   const handleCardClick = (plcy_no: string) => {
@@ -125,6 +125,10 @@ export default function HomeScreen({ onNavigate }: ScreenProps) {
                 </div>
               </div>
             ))
+          ) : error ? (
+            <div className="p-5 bg-white border border-slate-100 rounded-2xl text-center text-sm text-slate-500">
+              정책을 불러오지 못했어요. 잠시 후 다시 시도해주세요.
+            </div>
           ) : (
             sortedItems.map((policy) => (
               <PolicyCard
