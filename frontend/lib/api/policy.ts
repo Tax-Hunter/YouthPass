@@ -64,10 +64,12 @@ export interface PolicyCardData {
   region: string;
   org?: string | null;
   summary?: string | null;
+  benefit?: string | null;
   dday: string;
   days?: number | null;
   views: number;
   is_always_open: boolean;
+  sprt_arvl_seq_yn?: boolean | null;
   apply_end_date?: string | null;
   keywords?: string[] | null;
   aply_url_addr?: string | null;
@@ -106,7 +108,7 @@ export interface PolicyListParams {
   // 복구 시 workflow/9_feat/phase6_설문정책매칭.md 참고.
   sort?: "recent" | "popular" | "deadline" | "recommended";
   applicable?: boolean;
-  closed_only?: boolean;
+  job?: string[];
 }
 
 function buildPolicyQuery(params: PolicyListParams & { page?: number }) {
@@ -114,13 +116,13 @@ function buildPolicyQuery(params: PolicyListParams & { page?: number }) {
   if (params.q) query.set("q", params.q);
   params.category?.forEach((c) => query.append("category", c));
   params.keywords?.forEach((k) => query.append("keywords", k));
+  params.job?.forEach((j) => query.append("job", j));
   if (params.sido) query.set("sido", params.sido);
   if (params.age != null) query.set("age", String(params.age));
   if (params.page) query.set("page", String(params.page));
   if (params.size) query.set("size", String(params.size));
   if (params.sort) query.set("sort", params.sort);
   if (params.applicable) query.set("applicable", "true");
-  if (params.closed_only) query.set("closed_only", "true");
   return query;
 }
 
@@ -152,7 +154,7 @@ export function usePolicyDetail(policyId: string | null) {
 }
 
 export function usePolicyList(params: (PolicyListParams & { page?: number }) | null) {
-  const url = `${BASE}/policy/get/policies?${params ? buildPolicyQuery(params).toString() : ""}`;
+  const url = `${BASE}/policy/get/search?${params ? buildPolicyQuery(params).toString() : ""}`;
 
   const { data, error, isLoading } = useQuery<PolicyListResponse>({
     queryKey: ["policy", "list", params],
@@ -187,7 +189,7 @@ export function useInfinitePolicyList(params: PolicyListParams | null) {
   const query = useInfiniteQuery<PolicyListResponse>({
     queryKey: ["policy", "list", "infinite", params],
     queryFn: ({ pageParam, signal }) =>
-      fetcher(`${BASE}/policy/get/policies?${buildPolicyQuery({ ...params, size, page: pageParam as number }).toString()}`, signal),
+      fetcher(`${BASE}/policy/get/search?${buildPolicyQuery({ ...params, size, page: pageParam as number }).toString()}`, signal),
     initialPageParam: 1,
     getNextPageParam: (lastPage) =>
       lastPage.page * lastPage.size < lastPage.total ? lastPage.page + 1 : undefined,

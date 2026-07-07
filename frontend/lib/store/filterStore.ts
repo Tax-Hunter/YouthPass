@@ -2,9 +2,8 @@ import { create } from "zustand"
 import { persist } from "zustand/middleware"
 import type { FilterState } from "@/lib/types"
 
-const DEFAULT_FILTERS: FilterState = {
-  city: "서울특별시",
-  district: "전체",
+export const DEFAULT_FILTERS: FilterState = {
+  city: "전국",
   employment: "미취업",
   categories: {
     주거: false,
@@ -21,6 +20,7 @@ interface FilterStore {
   filterApplied: boolean
   _hasHydrated: boolean
   saveFilters: (newFilters: FilterState) => void
+  clearFilters: () => void
   setHasHydrated: (v: boolean) => void
 }
 
@@ -31,6 +31,11 @@ export const useFilterStore = create<FilterStore>()(
       filterApplied: false,
       _hasHydrated: false,
       saveFilters: (newFilters) => set({ filters: newFilters, filterApplied: true }),
+      // age는 설문(SurveyScreen) 응답 값이라 필터 초기화 대상에서 제외 — 그대로 유지
+      clearFilters: () => set((state) => ({
+        filters: { ...DEFAULT_FILTERS, age: state.filters.age },
+        filterApplied: false,
+      })),
       setHasHydrated: (v) => set({ _hasHydrated: v }),
     }),
     {

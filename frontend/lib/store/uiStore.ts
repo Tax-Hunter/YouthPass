@@ -7,6 +7,9 @@ interface UiState {
   supportModalOpen: boolean
   openSupportModal: () => void
   closeSupportModal: () => void
+  searchInputOpen: boolean
+  toggleSearchInput: () => void
+  closeSearchInput: () => void
 }
 
 export const useUiStore = create<UiState>((set) => ({
@@ -16,4 +19,7 @@ export const useUiStore = create<UiState>((set) => ({
   supportModalOpen: false,
   openSupportModal: () => set({ supportModalOpen: true }),
   closeSupportModal: () => set({ supportModalOpen: false }),
+  searchInputOpen: false,
+  toggleSearchInput: () => set((state) => ({ searchInputOpen: !state.searchInputOpen })),
+  closeSearchInput: () => set({ searchInputOpen: false }),
 }))

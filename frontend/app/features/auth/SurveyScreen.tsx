@@ -6,10 +6,113 @@ import { useAuthStore } from "@/lib/store/authStore";
 import { useFilterStore } from "@/lib/store/filterStore";
 import { fetchWithAuth } from "@/lib/fetchWithAuth";
 import { CITY_OPTIONS } from "@/lib/sidoMap";
-import type { EmploymentStatus, EducationLevel, SpecialCondition } from "@/lib/types";
+import type {
+  EmploymentStatus,
+  EducationLevel,
+  SpecialCondition,
+} from "@/lib/types";
 import Header from "@/app/components/layout/Header";
 
 const TOTAL_STEPS = 6;
+
+// 공통 svg 아이콘 래퍼 (fill=none, stroke=currentColor, viewBox 24)
+function Icon({
+  className,
+  children,
+}: {
+  className?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      {children}
+    </svg>
+  );
+}
+
+// strokeLinecap/strokeLinejoin/strokeWidth=2 기본값을 가진 path (체크 아이콘만 3으로 override)
+function IconPath({ d, strokeWidth = 2 }: { d: string; strokeWidth?: number }) {
+  return (
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={strokeWidth}
+      d={d}
+    />
+  );
+}
+
+function CheckIcon({ className = "w-3 h-3 text-white" }: { className?: string }) {
+  return (
+    <Icon className={className}>
+      <IconPath d="M5 13l4 4L19 7" strokeWidth={3} />
+    </Icon>
+  );
+}
+
+// 옵션 버튼의 선택 인디케이터 (circle: 단일선택, square: 다중선택/약관)
+function SelectIndicator({
+  active,
+  shape = "circle",
+  className = "",
+}: {
+  active: boolean;
+  shape?: "circle" | "square";
+  className?: string;
+}) {
+  return (
+    <div
+      className={`w-5 h-5 shrink-0 border-2 flex items-center justify-center transition-colors ${
+        shape === "circle" ? "rounded-full" : "rounded-md"
+      } ${active ? "bg-blue-600 border-blue-600" : "border-slate-300"} ${className}`}
+    >
+      {active && <CheckIcon />}
+    </div>
+  );
+}
+
+// step3(icon+desc)/step4/step5/step6 옵션 버튼 공통 구조
+function OptionButton({
+  label,
+  desc,
+  active,
+  onClick,
+  shape = "circle",
+  icon,
+}: {
+  label: string;
+  desc?: string;
+  active: boolean;
+  onClick: () => void;
+  shape?: "circle" | "square";
+  icon?: React.ReactNode;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={`w-full flex items-center gap-3 ${icon ? "p-4" : "px-5 py-4"} rounded-2xl border text-left transition-all active:scale-[0.98] ${
+        active
+          ? "border-blue-500 bg-blue-50/60"
+          : "border-slate-200 bg-slate-50 hover:border-blue-200 hover:bg-white"
+      }`}
+    >
+      {icon}
+      <div className="flex-1 min-w-0">
+        <p
+          className={`${desc ? "text-[14px]" : "text-[14.5px]"} font-bold ${active ? "text-blue-700" : "text-slate-800"}`}
+        >
+          {label}
+        </p>
+        {desc && (
+          <p className="text-[11.5px] text-slate-400 font-medium mt-0.5">
+            {desc}
+          </p>
+        )}
+      </div>
+      <SelectIndicator active={active} shape={shape} />
+    </button>
+  );
+}
 
 const CATEGORIES = [
   { key: "주거", label: "주거", desc: "월세·전세·임대주택" },
@@ -19,33 +122,42 @@ const CATEGORIES = [
   { key: "생활", label: "생활", desc: "문화·건강·복지" },
 ];
 
-const CATEGORY_STYLE: Record<string, { color: string; path: React.ReactNode }> = {
-  주거: {
-    color: "bg-blue-50 text-blue-600",
-    path: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />,
-  },
-  금융: {
-    color: "bg-teal-50 text-teal-600",
-    path: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />,
-  },
-  일자리: {
-    color: "bg-indigo-50 text-indigo-600",
-    path: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />,
-  },
-  교육: {
-    color: "bg-amber-50 text-amber-600",
-    path: (
-      <>
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 14l9-5-9-5-9 5 9 5z" />
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z" />
-      </>
-    ),
-  },
-  생활: {
-    color: "bg-rose-50 text-rose-600",
-    path: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />,
-  },
-};
+const CATEGORY_STYLE: Record<string, { color: string; path: React.ReactNode }> =
+  {
+    주거: {
+      color: "bg-blue-50 text-blue-600",
+      path: (
+        <IconPath d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+      ),
+    },
+    금융: {
+      color: "bg-teal-50 text-teal-600",
+      path: (
+        <IconPath d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+      ),
+    },
+    일자리: {
+      color: "bg-indigo-50 text-indigo-600",
+      path: (
+        <IconPath d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+      ),
+    },
+    교육: {
+      color: "bg-amber-50 text-amber-600",
+      path: (
+        <>
+          <IconPath d="M12 14l9-5-9-5-9 5 9 5z" />
+          <IconPath d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z" />
+        </>
+      ),
+    },
+    생활: {
+      color: "bg-rose-50 text-rose-600",
+      path: (
+        <IconPath d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+      ),
+    },
+  };
 
 // 현재 상황 → jobCd 매핑 (백엔드 survey_codes.py JOB_CD_MAP과 slug 일치)
 const EMPLOYMENT_OPTIONS: { slug: EmploymentStatus; label: string }[] = [
@@ -74,10 +186,6 @@ const CONDITION_OPTIONS: { slug: SpecialCondition; label: string }[] = [
   { slug: "sme_employee", label: "중소기업 재직" },
 ];
 
-const CHECK_PATH = (
-  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" />
-);
-
 interface ScreenProps {
   onNavigate?: (screenId: string) => void;
 }
@@ -85,8 +193,14 @@ interface ScreenProps {
 export default function SurveyScreen({ onNavigate }: ScreenProps) {
   const router = useRouter();
   const go = (screenId: string) => {
-    if (onNavigate) { onNavigate(screenId); return; }
-    if (screenId === "back") { router.back(); return; }
+    if (onNavigate) {
+      onNavigate(screenId);
+      return;
+    }
+    if (screenId === "back") {
+      router.back();
+      return;
+    }
     router.push(`/${screenId}`);
   };
   const { user, setUser } = useAuthStore();
@@ -106,16 +220,14 @@ export default function SurveyScreen({ onNavigate }: ScreenProps) {
       CATEGORIES.map(({ key }) => [key, existing[key] ?? false]),
     );
   });
-  const [employmentStatus, setEmploymentStatus] = useState<EmploymentStatus | null>(
-    user?.employment_status ?? null,
-  );
+  const [employmentStatus, setEmploymentStatus] =
+    useState<EmploymentStatus | null>(user?.employment_status ?? null);
   const [educationLevel, setEducationLevel] = useState<EducationLevel | null>(
     user?.education_level ?? null,
   );
-  const [specialConditions, setSpecialConditions] = useState<SpecialCondition[]>(
-    user?.special_conditions ?? [],
-  );
-  const [nickname, setNickname] = useState(user?.nickname ?? "");
+  const [specialConditions, setSpecialConditions] = useState<
+    SpecialCondition[]
+  >(user?.special_conditions ?? []);
   const [termsAgreed, setTermsAgreed] = useState(
     user?.survey_completed ?? false,
   );
@@ -167,7 +279,8 @@ export default function SurveyScreen({ onNavigate }: ScreenProps) {
         const url = isEditMode
           ? `${BASE}/users/put/me`
           : `${BASE}/users/post/survey`;
-        const trimmedNickname = nickname.trim();
+        // 닉네임은 설문에서 별도로 받지 않고 구글 로그인 때 채워진 값을 그대로 사용
+        // (SurveyRequest(POST)는 nickname이 필수(Field(..., min_length=2))라 항상 보내야 함)
         const surveyFields = {
           age: Number(age),
           region_city: city,
@@ -178,8 +291,7 @@ export default function SurveyScreen({ onNavigate }: ScreenProps) {
           // 복구 시 여기 되돌리기 — workflow/9_feat/phase6_설문정책매칭.md 참고
           // income_level: 소득 질문 자체를 설문에서 제거(대부분 정책이 소득무관/기타라 매칭에 거의
           // 영향을 못 줘 무의미하다고 판단) — 같은 문서 참고
-          // 2자 미만이면 보내지 않음 → 구글 로그인 때 채워진 기존 닉네임 유지
-          ...(trimmedNickname.length >= 2 && { nickname: trimmedNickname }),
+          ...(user.nickname && { nickname: user.nickname }),
         };
         const body = isEditMode
           ? surveyFields
@@ -202,7 +314,18 @@ export default function SurveyScreen({ onNavigate }: ScreenProps) {
           return;
         } else {
           const data = await res.json().catch(() => ({}));
-          setError(data?.detail ?? "제출 중 오류가 발생했습니다.");
+          // FastAPI 422는 detail이 문자열이 아니라 에러 객체 배열이라 그대로 렌더하면 크래시남
+          const detail = data?.detail;
+          const message =
+            typeof detail === "string"
+              ? detail
+              : Array.isArray(detail)
+                ? detail
+                    .map((d) => d?.msg)
+                    .filter(Boolean)
+                    .join(", ")
+                : null;
+          setError(message || "제출 중 오류가 발생했습니다.");
           setIsSubmitting(false);
           return;
         }
@@ -213,7 +336,7 @@ export default function SurveyScreen({ onNavigate }: ScreenProps) {
       }
     }
 
-    go("list");
+    go("search");
   };
 
   const goNext = () => {
@@ -225,7 +348,9 @@ export default function SurveyScreen({ onNavigate }: ScreenProps) {
   // 드롭다운 열릴 때 선택된 항목(없으면 첫 번째) 자동 포커스
   useEffect(() => {
     if (!isCityOpen || !dropdownRef.current) return;
-    const selected = dropdownRef.current.querySelector<HTMLElement>("[data-selected='true']");
+    const selected = dropdownRef.current.querySelector<HTMLElement>(
+      "[data-selected='true']",
+    );
     const first = dropdownRef.current.querySelector<HTMLElement>("button");
     (selected ?? first)?.focus();
   }, [isCityOpen]);
@@ -260,8 +385,14 @@ export default function SurveyScreen({ onNavigate }: ScreenProps) {
       hint: `최대 5개 · ${selectedCount}개 선택됨`,
     },
     { q: "현재 상황은\n무엇인가요?", hint: "정책 취업 조건 매칭에 활용돼요" },
-    { q: "현재 학력은\n어떻게 되나요?", hint: "정책 학력 조건 매칭에 활용돼요" },
-    { q: "해당되는 조건이\n있나요?", hint: "복수 선택 가능 · 없으면 넘어가세요 · 마지막 단계예요" },
+    {
+      q: "현재 학력은\n어떻게 되나요?",
+      hint: "정책 학력 조건 매칭에 활용돼요",
+    },
+    {
+      q: "해당되는 조건이\n있나요?",
+      hint: "복수 선택 가능 · 없으면 넘어가세요 · 마지막 단계예요",
+    },
   ];
 
   const current = stepMeta[step - 1];
@@ -270,12 +401,12 @@ export default function SurveyScreen({ onNavigate }: ScreenProps) {
     <div className="flex flex-col h-full bg-white text-slate-800 font-sans select-none overflow-hidden pt-header">
       <Header
         isLocationHeader
-        onBack={() => step > 1 ? setStep((s) => s - 1) : go("back")}
-        onSkip={() => go("list")}
+        onBack={() => (step > 1 ? setStep((s) => s - 1) : go("back"))}
+        onSkip={() => go("search")}
       />
 
       {/* Step indicator: segmented progress bar + step count */}
-      <div className="px-6 pt-6 pb-1 shrink-0">
+      <div className="px-screen pt-6 pb-1 shrink-0">
         <div className="flex items-center gap-2 mb-4">
           <div className="flex-1 flex gap-1.5">
             {Array.from({ length: TOTAL_STEPS }).map((_, i) => (
@@ -288,7 +419,8 @@ export default function SurveyScreen({ onNavigate }: ScreenProps) {
             ))}
           </div>
           <span className="text-[11px] font-extrabold text-blue-600 tabular-nums shrink-0">
-            {step}<span className="text-slate-300">/{TOTAL_STEPS}</span>
+            {step}
+            <span className="text-slate-300">/{TOTAL_STEPS}</span>
           </span>
         </div>
         <h2 className="text-[26px] font-extrabold text-slate-900 leading-snug tracking-tight whitespace-pre-line">
@@ -300,7 +432,10 @@ export default function SurveyScreen({ onNavigate }: ScreenProps) {
       </div>
 
       {/* Content */}
-      <div key={step} className="flex-1 overflow-y-auto scroll-stable px-6 pb-4 animate-fade-in">
+      <div
+        key={step}
+        className="flex-1 min-h-0 overflow-y-auto scroll-stable px-screen pb-4 animate-fade-in"
+      >
         {/* Step 1: 나이 */}
         {step === 1 && (
           <div className="pt-2">
@@ -311,11 +446,13 @@ export default function SurveyScreen({ onNavigate }: ScreenProps) {
                 pattern="[0-9]*"
                 maxLength={2}
                 value={age}
-                onChange={(e) => setAge(e.target.value.replace(/\D/g, "").slice(0, 2))}
+                onChange={(e) =>
+                  setAge(e.target.value.replace(/\D/g, "").slice(0, 2))
+                }
                 onKeyDown={(e) => e.key === "Enter" && goNext()}
                 placeholder="25"
                 autoFocus
-                className="w-full pl-5 pr-11 py-3.5 bg-slate-50 border border-slate-200 focus:border-blue-500 focus:bg-white rounded-2xl outline-none text-[14.5px] font-semibold text-slate-900 transition-all"
+                className="w-full pl-5 pr-11 py-3.5 bg-slate-50 border border-slate-200 focus:border-blue-500 focus:bg-white rounded-2xl outline-none text-base font-semibold text-slate-900 transition-all"
               />
               <span className="absolute right-5 top-1/2 -translate-y-1/2 text-[12px] font-bold text-slate-400 pointer-events-none">
                 세
@@ -345,19 +482,11 @@ export default function SurveyScreen({ onNavigate }: ScreenProps) {
               <span className={city ? "text-slate-900" : "text-slate-400"}>
                 {city || "시/도 선택"}
               </span>
-              <svg
+              <Icon
                 className={`w-5 h-5 text-slate-400 transition-transform duration-200 ${isCityOpen ? "rotate-180 text-blue-500" : ""}`}
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
               >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                  d="M19 9l-7 7-7-7"
-                />
-              </svg>
+                <IconPath d="M19 9l-7 7-7-7" />
+              </Icon>
             </button>
             {isCityOpen && (
               <div
@@ -396,38 +525,20 @@ export default function SurveyScreen({ onNavigate }: ScreenProps) {
               const active = selectedCategories[key];
               const style = CATEGORY_STYLE[key];
               return (
-                <button
+                <OptionButton
                   key={key}
+                  label={label}
+                  desc={desc}
+                  active={active}
                   onClick={() => toggleCategory(key)}
-                  className={`w-full flex items-center gap-3 p-4 rounded-2xl border text-left transition-all active:scale-[0.98] ${
-                    active
-                      ? "border-blue-500 bg-blue-50/60"
-                      : "border-slate-200 bg-slate-50 hover:border-blue-200 hover:bg-white"
-                  }`}
-                >
-                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${style.color}`}>
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      {style.path}
-                    </svg>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className={`text-[14px] font-bold ${active ? "text-blue-700" : "text-slate-800"}`}>
-                      {label}
-                    </p>
-                    <p className="text-[11.5px] text-slate-400 font-medium mt-0.5">{desc}</p>
-                  </div>
-                  <div
-                    className={`w-5 h-5 shrink-0 rounded-full border-2 flex items-center justify-center transition-colors ${
-                      active ? "bg-blue-600 border-blue-600" : "border-slate-300"
-                    }`}
-                  >
-                    {active && (
-                      <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        {CHECK_PATH}
-                      </svg>
-                    )}
-                  </div>
-                </button>
+                  icon={
+                    <div
+                      className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${style.color}`}
+                    >
+                      <Icon className="w-5 h-5">{style.path}</Icon>
+                    </div>
+                  }
+                />
               );
             })}
           </div>
@@ -436,161 +547,58 @@ export default function SurveyScreen({ onNavigate }: ScreenProps) {
         {/* Step 4: 현재 상황 (단일 선택) */}
         {step === 4 && (
           <div className="pt-2 flex flex-col gap-2.5">
-            {EMPLOYMENT_OPTIONS.map(({ slug, label }) => {
-              const active = employmentStatus === slug;
-              return (
-                <button
-                  key={slug}
-                  onClick={() => setEmploymentStatus(slug)}
-                  className={`w-full flex items-center justify-between px-5 py-4 rounded-2xl border text-left transition-all active:scale-[0.98] ${
-                    active
-                      ? "border-blue-500 bg-blue-50/60"
-                      : "border-slate-200 bg-slate-50 hover:border-blue-200 hover:bg-white"
-                  }`}
-                >
-                  <span className={`text-[14.5px] font-bold ${active ? "text-blue-700" : "text-slate-800"}`}>
-                    {label}
-                  </span>
-                  <div
-                    className={`w-5 h-5 shrink-0 rounded-full border-2 flex items-center justify-center transition-colors ${
-                      active ? "bg-blue-600 border-blue-600" : "border-slate-300"
-                    }`}
-                  >
-                    {active && (
-                      <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        {CHECK_PATH}
-                      </svg>
-                    )}
-                  </div>
-                </button>
-              );
-            })}
+            {EMPLOYMENT_OPTIONS.map(({ slug, label }) => (
+              <OptionButton
+                key={slug}
+                label={label}
+                active={employmentStatus === slug}
+                onClick={() => setEmploymentStatus(slug)}
+              />
+            ))}
           </div>
         )}
 
         {/* Step 5: 학력 (단일 선택) */}
         {step === 5 && (
           <div className="pt-2 flex flex-col gap-2.5">
-            {EDUCATION_OPTIONS.map(({ slug, label }) => {
-              const active = educationLevel === slug;
-              return (
-                <button
-                  key={slug}
-                  onClick={() => setEducationLevel(slug)}
-                  className={`w-full flex items-center justify-between px-5 py-4 rounded-2xl border text-left transition-all active:scale-[0.98] ${
-                    active
-                      ? "border-blue-500 bg-blue-50/60"
-                      : "border-slate-200 bg-slate-50 hover:border-blue-200 hover:bg-white"
-                  }`}
-                >
-                  <span className={`text-[14.5px] font-bold ${active ? "text-blue-700" : "text-slate-800"}`}>
-                    {label}
-                  </span>
-                  <div
-                    className={`w-5 h-5 shrink-0 rounded-full border-2 flex items-center justify-center transition-colors ${
-                      active ? "bg-blue-600 border-blue-600" : "border-slate-300"
-                    }`}
-                  >
-                    {active && (
-                      <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        {CHECK_PATH}
-                      </svg>
-                    )}
-                  </div>
-                </button>
-              );
-            })}
+            {EDUCATION_OPTIONS.map(({ slug, label }) => (
+              <OptionButton
+                key={slug}
+                label={label}
+                active={educationLevel === slug}
+                onClick={() => setEducationLevel(slug)}
+              />
+            ))}
           </div>
         )}
 
         {/* Step 6: 해당되는 조건 (복수 선택) + 닉네임 + 약관 동의 */}
         {step === 6 && (
           <div className="pt-2 flex flex-col gap-2.5">
-            <button
+            <OptionButton
+              label="없음"
+              active={specialConditions.length === 0}
               onClick={() => setSpecialConditions([])}
-              className={`w-full flex items-center justify-between px-5 py-4 rounded-2xl border text-left transition-all active:scale-[0.98] ${
-                specialConditions.length === 0
-                  ? "border-blue-500 bg-blue-50/60"
-                  : "border-slate-200 bg-slate-50 hover:border-blue-200 hover:bg-white"
-              }`}
-            >
-              <span className={`text-[14.5px] font-bold ${specialConditions.length === 0 ? "text-blue-700" : "text-slate-800"}`}>
-                없음
-              </span>
-              <div
-                className={`w-5 h-5 shrink-0 rounded-md border-2 flex items-center justify-center transition-colors ${
-                  specialConditions.length === 0 ? "bg-blue-600 border-blue-600" : "border-slate-300"
-                }`}
-              >
-                {specialConditions.length === 0 && (
-                  <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    {CHECK_PATH}
-                  </svg>
-                )}
-              </div>
-            </button>
-            {CONDITION_OPTIONS.map(({ slug, label }) => {
-              const active = specialConditions.includes(slug);
-              return (
-                <button
-                  key={slug}
-                  onClick={() => toggleCondition(slug)}
-                  className={`w-full flex items-center justify-between px-5 py-4 rounded-2xl border text-left transition-all active:scale-[0.98] ${
-                    active
-                      ? "border-blue-500 bg-blue-50/60"
-                      : "border-slate-200 bg-slate-50 hover:border-blue-200 hover:bg-white"
-                  }`}
-                >
-                  <span className={`text-[14.5px] font-bold ${active ? "text-blue-700" : "text-slate-800"}`}>
-                    {label}
-                  </span>
-                  <div
-                    className={`w-5 h-5 shrink-0 rounded-md border-2 flex items-center justify-center transition-colors ${
-                      active ? "bg-blue-600 border-blue-600" : "border-slate-300"
-                    }`}
-                  >
-                    {active && (
-                      <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        {CHECK_PATH}
-                      </svg>
-                    )}
-                  </div>
-                </button>
-              );
-            })}
-            <div className="mt-2.5">
-              <p className="text-[11px] font-bold text-slate-400 mb-1.5">닉네임 (선택, 2~12자)</p>
-              <input
-                type="text"
-                value={nickname}
-                onChange={(e) => setNickname(e.target.value)}
-                placeholder="닉네임 입력"
-                maxLength={12}
-                className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 focus:border-blue-500 focus:bg-white rounded-2xl outline-none text-[14.5px] font-semibold text-slate-900 transition-all"
+              shape="square"
+            />
+            {CONDITION_OPTIONS.map(({ slug, label }) => (
+              <OptionButton
+                key={slug}
+                label={label}
+                active={specialConditions.includes(slug)}
+                onClick={() => toggleCondition(slug)}
+                shape="square"
               />
-            </div>
+            ))}
             <button
               onClick={() => setTermsAgreed((v) => !v)}
               className="flex items-start gap-3 text-left p-4 bg-slate-50 border border-slate-200 rounded-2xl hover:bg-white transition-colors"
             >
-              <div
-                className={`mt-0.5 w-5 h-5 shrink-0 rounded-md border-2 flex items-center justify-center transition-colors ${
-                  termsAgreed
-                    ? "bg-blue-600 border-blue-600"
-                    : "border-slate-300"
-                }`}
-              >
-                {termsAgreed && (
-                  <svg
-                    className="w-3 h-3 text-white"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    {CHECK_PATH}
-                  </svg>
-                )}
-              </div>
+              <SelectIndicator
+                active={termsAgreed}
+                shape="square"
+                className="mt-0.5"
+              />
               <span className="text-[13px] text-slate-600 font-medium leading-relaxed">
                 서비스 이용약관 및 개인정보 처리방침에 동의합니다{" "}
                 <span className="text-blue-600 font-bold">(필수)</span>
@@ -609,7 +617,7 @@ export default function SurveyScreen({ onNavigate }: ScreenProps) {
       </div>
 
       {/* Footer */}
-      <footer className="px-6 pb-10 pt-4 shrink-0 border-t border-slate-50">
+      <footer className="px-screen pb-10 pt-4 shrink-0 border-t border-slate-50">
         <button
           onClick={goNext}
           disabled={!canNext() || isSubmitting}
@@ -620,9 +628,24 @@ export default function SurveyScreen({ onNavigate }: ScreenProps) {
           }`}
         >
           {isSubmitting ? (
-            <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+            <svg
+              className="w-5 h-5 animate-spin"
+              fill="none"
+              viewBox="0 0 24 24"
+            >
+              <circle
+                className="opacity-25"
+                cx="12"
+                cy="12"
+                r="10"
+                stroke="currentColor"
+                strokeWidth="4"
+              />
+              <path
+                className="opacity-75"
+                fill="currentColor"
+                d="M4 12a8 8 0 018-8v8H4z"
+              />
             </svg>
           ) : step < TOTAL_STEPS ? (
             "다음 →"

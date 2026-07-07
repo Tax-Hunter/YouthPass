@@ -23,7 +23,6 @@ export interface User {
 
 export interface FilterState {
   city: string
-  district: string
   employment: string
   categories: Record<string, boolean>
   keywords?: string[]

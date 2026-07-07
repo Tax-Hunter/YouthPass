@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useUiStore } from "@/lib/store/uiStore";
 
 interface Props {
   onNavigate?: (screenId: string) => void;
@@ -12,6 +13,7 @@ interface Props {
   onBack?: () => void;
   onSkip?: () => void;
   skipLabel?: string;
+  onScrolledChange?: (isScrolled: boolean) => void;
 }
 
 export default function Header({
@@ -23,12 +25,19 @@ export default function Header({
   onBack,
   onSkip,
   skipLabel = "나중에 하기",
+  onScrolledChange,
 }: Props) {
   const router = useRouter();
   const [isScrolled, setIsScrolled] = useState(false);
+  const toggleSearchInput = useUiStore((s) => s.toggleSearchInput);
 
   useEffect(() => {
     let lastScrollTop = 0;
+
+    const update = (v: boolean) => {
+      setIsScrolled(v);
+      onScrolledChange?.(v);
+    };
 
     const handleScroll = (e: Event) => {
       const target = e.target as HTMLElement;
@@ -37,12 +46,12 @@ export default function Header({
       const currentScrollTop = target.scrollTop;
 
       if (currentScrollTop <= 10) {
-        setIsScrolled(false);
+        update(false);
       } else {
         if (currentScrollTop < lastScrollTop) {
-          setIsScrolled(false);
+          update(false);
         } else if (currentScrollTop > lastScrollTop) {
-          setIsScrolled(true);
+          update(true);
         }
       }
       lastScrollTop = currentScrollTop;
@@ -51,8 +60,9 @@ export default function Header({
     window.addEventListener("scroll", handleScroll, true);
     return () => {
       window.removeEventListener("scroll", handleScroll, true);
-      setIsScrolled(false);
+      update(false);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname]);
 
   // Center Brand Logo (Clickable to go home)
@@ -68,7 +78,7 @@ export default function Header({
       onMouseEnter={() => {
         router.prefetch("/home");
       }}
-      className={`absolute left-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center justify-center hover:opacity-85 active:scale-95 transition-all duration-300 cursor-pointer z-20 shrink-0 ${
+      className={`absolute left-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center justify-center hover:opacity-85 active:scale-95 transition-all duration-100 cursor-pointer z-20 shrink-0 ${
         isScrolled ? "top-1/2" : "top-1/2"
       }`}
     >
@@ -79,7 +89,7 @@ export default function Header({
         style={{
           width: "auto",
           height: isScrolled ? "2.25rem" : "3.75rem",
-          transition: "height 0.3s",
+          transition: "height 0.1s",
         }}
         className="object-contain rounded-md"
       />
@@ -97,14 +107,14 @@ export default function Header({
   if (isLocationHeader) {
     return (
       <header
-        className={`w-full absolute top-0 left-0 right-0 z-30 shrink-0 box-border select-none transition-all duration-300 ${headerBgClass}`}
+        className={`w-full absolute top-0 left-0 right-0 z-30 shrink-0 box-border select-none transition-all duration-100 ${headerBgClass}`}
         style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}
       >
-      <div className={`w-full flex items-center justify-between px-5 transition-all duration-300 relative ${isScrolled ? "h-13.5 pt-1" : "h-19 pt-3"}`}>
+      <div className={`w-full flex items-center justify-between px-5 transition-all duration-100 relative ${isScrolled ? "h-13.5 pt-1" : "h-19 pt-3"}`}>
         {/* Left Back Arrow & Text */}
         <button
           onClick={() => (onBack ? onBack() : router.back())}
-          className={`flex items-center text-sm font-bold text-blue-600 hover:text-blue-700 transition-all duration-300 p-1 active:scale-95 shrink-0 ${buttonOpacityClass}`}
+          className={`flex items-center text-sm font-bold text-blue-600 hover:text-blue-700 transition-all duration-100 p-1 active:scale-95 shrink-0 ${buttonOpacityClass}`}
         >
           <svg
             className="w-5 h-5 mr-0.5 stroke-[2.5]"
@@ -127,7 +137,7 @@ export default function Header({
         {/* Right Action */}
         <button
           onClick={() => (onSkip ? onSkip() : router.push("/home"))}
-          className={`text-xs font-bold text-slate-400 hover:text-slate-700 transition-all duration-300 p-1 active:scale-95 shrink-0 ${buttonOpacityClass}`}
+          className={`text-xs font-bold text-slate-400 hover:text-slate-700 transition-all duration-100 p-1 active:scale-95 shrink-0 ${buttonOpacityClass}`}
         >
           {skipLabel}
         </button>
@@ -141,16 +151,16 @@ export default function Header({
 
   return (
     <header
-      className={`w-full absolute top-0 left-0 right-0 z-30 shrink-0 box-border select-none transition-all duration-300 ${headerBgClass}`}
+      className={`w-full absolute top-0 left-0 right-0 z-30 shrink-0 box-border select-none transition-all duration-100 ${headerBgClass}`}
       style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}
     >
-      <div className={`w-full flex items-center justify-between px-5 transition-all duration-300 relative ${isScrolled ? "h-13.5 pt-1" : "h-19 pt-3"}`}>
+      <div className={`w-full flex items-center justify-between px-5 transition-all duration-100 relative ${isScrolled ? "h-13.5 pt-1" : "h-19 pt-3"}`}>
         {/* Left Back Button */}
         <button
           onClick={() => {
             router.back();
           }}
-          className={`p-1.5 hover:bg-slate-100 active:scale-90 rounded-full transition-all duration-300 text-slate-700 flex items-center justify-center shrink-0 ${buttonOpacityClass}`}
+          className={`p-1.5 hover:bg-slate-100 active:scale-90 rounded-full transition-all duration-100 text-slate-700 flex items-center justify-center shrink-0 ${buttonOpacityClass}`}
         >
           <svg
             className="w-6 h-6 stroke-[2.5]"
@@ -171,12 +181,16 @@ export default function Header({
 
         {/* Right Icons */}
         <div
-          className={`flex items-center gap-3 shrink-0 transition-all duration-300 ${buttonOpacityClass}`}
+          className={`flex items-center gap-3 shrink-0 transition-all duration-100 ${buttonOpacityClass}`}
         >
           {showRightActions && (
             <>
               <button
-                onClick={() => onNavigate?.("search")}
+                onClick={() =>
+                  currentScreen === "search"
+                    ? toggleSearchInput()
+                    : onNavigate?.("search")
+                }
                 onMouseEnter={() => {
                   router.prefetch("/search");
                 }}

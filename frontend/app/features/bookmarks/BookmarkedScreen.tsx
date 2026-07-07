@@ -90,7 +90,7 @@ export default function BookmarkedScreen({ onNavigate }: ScreenProps) {
   return (
     <div className="flex flex-col h-full bg-white text-slate-800 font-sans select-none overflow-y-auto scroll-stable pt-header">
       {/* Title & Share */}
-      <div className="px-6 pt-5 pb-3 flex items-center justify-between shrink-0">
+      <div className="px-screen pt-5 pb-3 flex items-center justify-between shrink-0">
         <h2 className="text-xl font-bold text-slate-900 flex items-center gap-1.5">
           찜한 정책
           <span className="text-blue-600 font-mono">{bookmarks.length}</span>
@@ -99,7 +99,7 @@ export default function BookmarkedScreen({ onNavigate }: ScreenProps) {
       </div>
 
       {/* Filter Hashtags */}
-      <div className="px-6 py-2.5 flex flex-wrap gap-2 shrink-0">
+      <div className="px-screen py-2.5 flex flex-wrap gap-2 shrink-0">
         {tags.map((tag) => (
           <OptionButton
             key={tag}
@@ -114,7 +114,7 @@ export default function BookmarkedScreen({ onNavigate }: ScreenProps) {
       <div className="border-t border-slate-50" />
 
       {/* Cards */}
-      <div className="flex-1 px-6 py-5 space-y-4">
+      <div className="flex-1 px-screen py-5 space-y-4">
         {bookmarks.length === 0 ? (
           <div className="text-center py-16 flex flex-col items-center gap-2">
             <svg
