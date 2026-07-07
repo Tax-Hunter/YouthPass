@@ -4,6 +4,7 @@ import React, { useEffect, useState } from "react";
 import { useBookmarkStore } from "@/lib/store/bookmarkStore";
 import { usePolicyDetail } from "@/lib/api/policy";
 import type { PolicyCardData } from "@/lib/api/policy";
+import { createShareUrl } from "@/lib/api/share";
 import PolicyCard from "@/app/components/ui/PolicyCard";
 import OptionButton from "@/app/components/ui/OptionButton";
 import ShareButton from "@/app/components/ui/ShareButton";
@@ -102,7 +103,11 @@ export default function BookmarkedScreen({ onNavigate }: ScreenProps) {
           찜한 정책
           <span className="text-blue-600 font-mono">{bookmarks.length}</span>
         </h2>
-        <ShareButton className="text-xs font-bold" />
+        <ShareButton
+          className="text-xs font-bold"
+          disabled={bookmarks.length === 0}
+          getUrl={() => createShareUrl(bookmarks)}
+        />
       </div>
 
       {/* Filter Hashtags */}
