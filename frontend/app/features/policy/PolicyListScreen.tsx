@@ -62,7 +62,7 @@ export default function PolicyListScreen({ onNavigate }: ScreenProps) {
 
   return (
     <div className="flex flex-col h-full bg-slate-50 text-slate-800 font-sans select-none overflow-hidden relative">
-      <div className="flex-1 overflow-y-auto px-5 pb-24 pt-header-list space-y-4">
+      <div className="flex-1 overflow-y-auto scroll-stable px-5 pb-24 pt-header-list space-y-4">
         {!hasSurvey && _hasHydrated && (
           <button
             onClick={() => setIsSurveyOpen(true)}

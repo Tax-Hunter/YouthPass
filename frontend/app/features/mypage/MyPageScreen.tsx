@@ -41,7 +41,7 @@ export default function MyPageScreen({ onNavigate }: ScreenProps) {
 
   return (
     <div className="relative flex flex-col h-full bg-white text-slate-800 font-sans select-none overflow-hidden">
-      <div className="flex-1 overflow-y-auto min-h-112.5 flex flex-col pt-header">
+      <div className="flex-1 overflow-y-auto scroll-stable min-h-112.5 flex flex-col pt-header">
       {/* Main Profile Header */}
       <div className="px-6 py-6 flex items-center gap-4 shrink-0">
         <div className="w-16 h-16 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-400 overflow-hidden">

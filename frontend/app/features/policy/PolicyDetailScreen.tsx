@@ -97,7 +97,7 @@ export default function PolicyDetailScreen({ onNavigate }: ScreenProps) {
     <div className="h-full bg-white font-sans select-none flex flex-col">
 
       {/* ── Content (scrollable) ── */}
-      <div className="flex-1 min-h-0 overflow-y-auto pt-header">
+      <div className="flex-1 min-h-0 overflow-y-auto scroll-stable pt-header">
 
         {/* ── Title block ── */}
         <div className="px-5 pt-5 pb-4 border-b border-slate-100">

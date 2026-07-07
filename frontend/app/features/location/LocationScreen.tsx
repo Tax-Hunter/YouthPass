@@ -40,7 +40,7 @@ export default function LocationScreen({ onNavigate }: ScreenProps) {
   return (
     <div className="flex flex-col h-full bg-white text-slate-800 font-sans select-none overflow-hidden relative pt-[76px]">
       {/* Content Area */}
-      <div className="flex-1 overflow-y-auto px-6 py-6 flex flex-col justify-start min-h-[320px]">
+      <div className="flex-1 overflow-y-auto scroll-stable px-6 py-6 flex flex-col justify-start min-h-[320px]">
         {/* Step Indicator */}
         <div className="flex items-center gap-1 text-sm font-extrabold text-blue-600 mb-4">
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -75,7 +75,7 @@ export default function LocationScreen({ onNavigate }: ScreenProps) {
 
           {/* Dropdown options popup */}
           {isDropdownOpen && (
-            <div className="absolute top-full left-0 right-0 mt-2 max-h-56 overflow-y-auto bg-white border border-slate-100 rounded-2xl shadow-xl shadow-slate-100 z-20 animate-fade-in divide-y divide-slate-50">
+            <div className="absolute top-full left-0 right-0 mt-2 max-h-56 overflow-y-auto scroll-stable bg-white border border-slate-100 rounded-2xl shadow-xl shadow-slate-100 z-20 animate-fade-in divide-y divide-slate-50">
               {REGIONS.map((region) => (
                 <button
                   key={region}

@@ -74,7 +74,7 @@ export default function FilterScreen({ onNavigate }: ScreenProps) {
         </header>
 
         {/* Scrolling Fields + sticky footer */}
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto scroll-stable">
         <div className="px-6 py-5 space-y-6 pb-0">
           {/* Section 1: 거주 지역 */}
           <div className="space-y-2.5">

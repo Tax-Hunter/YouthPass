@@ -12,7 +12,7 @@ export default function LoginScreen({ onNavigate }: ScreenProps) {
   return (
     <div className="flex flex-col h-full bg-white text-slate-800 font-sans select-none overflow-hidden pt-[76px]">
       {/* Main Content Area */}
-      <div className="flex-1 overflow-y-auto flex flex-col items-center justify-center px-6 py-8 min-h-[380px]">
+      <div className="flex-1 overflow-y-auto scroll-stable flex flex-col items-center justify-center px-6 py-8 min-h-[380px]">
         {/* Google Login Actions at the top */}
         <div className="w-full flex flex-col items-center gap-3 mb-10">
           <span className="text-xs text-slate-400 font-medium">안전하고 간편하게 로그인하세요</span>

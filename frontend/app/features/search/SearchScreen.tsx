@@ -95,7 +95,7 @@ export default function SearchScreen({ onNavigate }: ScreenProps) {
         </div>
       </form>
 
-      <div className="flex-1 overflow-y-auto pb-24">
+      <div className="flex-1 overflow-y-auto scroll-stable pb-24">
 
         {/* Recent Searches */}
         {recentSearches.length > 0 && (
