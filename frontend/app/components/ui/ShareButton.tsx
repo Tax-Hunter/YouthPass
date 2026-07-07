@@ -3,7 +3,8 @@
 import React, { useState } from "react";
 
 interface ShareButtonProps {
-  getUrl?: () => string;
+  getUrl?: () => string | Promise<string>;
+  disabled?: boolean;
   className?: string;
 }
 
@@ -11,34 +12,45 @@ const COPIED_DURATION_MS = 1500;
 
 export default function ShareButton({
   getUrl = () => window.location.href,
+  disabled = false,
   className = "text-xs font-bold",
 }: ShareButtonProps) {
   const [copied, setCopied] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   const handleShare = async () => {
-    const url = getUrl();
+    if (loading || disabled) return;
+    setLoading(true);
     try {
-      await navigator.clipboard.writeText(url);
+      const url = await getUrl();
+      try {
+        await navigator.clipboard.writeText(url);
+      } catch {
+        const el = document.createElement("textarea");
+        el.value = url;
+        el.style.position = "fixed";
+        el.style.opacity = "0";
+        document.body.appendChild(el);
+        el.select();
+        document.execCommand("copy");
+        document.body.removeChild(el);
+      }
+      setCopied(true);
+      setTimeout(() => setCopied(false), COPIED_DURATION_MS);
     } catch {
-      const el = document.createElement("textarea");
-      el.value = url;
-      el.style.position = "fixed";
-      el.style.opacity = "0";
-      document.body.appendChild(el);
-      el.select();
-      document.execCommand("copy");
-      document.body.removeChild(el);
+      // 링크 생성 실패 시 조용히 무시 — 복사 상태로 전환하지 않음
+    } finally {
+      setLoading(false);
     }
-    setCopied(true);
-    setTimeout(() => setCopied(false), COPIED_DURATION_MS);
   };
 
   return (
     <button
       onClick={handleShare}
+      disabled={disabled || loading}
       className={`grid transition-colors ${className} ${
         copied ? "text-emerald-500" : "text-blue-600 hover:underline"
-      }`}
+      } ${disabled || loading ? "opacity-40 pointer-events-none" : ""}`}
     >
       <span
         className={`col-start-1 row-start-1 flex items-center gap-1 transition-opacity ${
@@ -62,7 +74,7 @@ export default function ShareButton({
       </span>
       <span
         className={`col-start-1 row-start-1 flex items-center gap-1 transition-opacity ${
-          copied ? "opacity-0 invisible pointer-events-none" : "opacity-100"
+          !copied && !loading ? "opacity-100" : "opacity-0 invisible pointer-events-none"
         }`}
       >
         <svg
@@ -79,6 +91,13 @@ export default function ShareButton({
           />
         </svg>
         공유
+      </span>
+      <span
+        className={`col-start-1 row-start-1 flex items-center gap-1 transition-opacity ${
+          loading && !copied ? "opacity-100" : "opacity-0 invisible pointer-events-none"
+        }`}
+      >
+        생성 중...
       </span>
     </button>
   );
