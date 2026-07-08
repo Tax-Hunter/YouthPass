@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useBookmarkStore } from "@/lib/store/bookmarkStore";
+import { useFilterStore, DEFAULT_FILTERS } from "@/lib/store/filterStore";
 import { usePolicyList, sortPoliciesByDeadline } from "@/lib/api/policy";
 import PolicyCard from "@/app/components/ui/PolicyCard";
 import PromoBanner from "@/app/components/ui/PromoBanner";
@@ -15,6 +16,7 @@ interface ScreenProps {
 export default function HomeScreen({ onNavigate }: ScreenProps) {
   const router = useRouter();
   const { toggle: toggleBookmark, isBookmarked } = useBookmarkStore();
+  const { saveFilters } = useFilterStore();
   const [isSurveyOpen, setIsSurveyOpen] = useState(false);
 
   const { data, error, isLoading } = usePolicyList({ sort: "deadline", size: 4, applicable: true });
@@ -63,7 +65,13 @@ export default function HomeScreen({ onNavigate }: ScreenProps) {
         ].map((cat) => (
           <button
             key={cat.label}
-            onClick={() => onNavigate?.("search")}
+            onClick={() => {
+              saveFilters({
+                ...DEFAULT_FILTERS,
+                categories: { ...DEFAULT_FILTERS.categories, [cat.label]: true },
+              });
+              onNavigate?.("search");
+            }}
             onMouseEnter={() => router.prefetch("/search")}
             className="flex flex-col items-center gap-2 p-1.5 rounded-xl hover:bg-slate-50 transition-colors active:scale-95"
           >
