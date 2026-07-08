@@ -1,4 +1,5 @@
 import hashlib
+import logging
 from datetime import date, datetime, timedelta, timezone
 from typing import List, Optional, Tuple
 
@@ -19,8 +20,12 @@ from app.api.routes.policy.constants import (
     REQ_NOLIMIT,
     SIDO_LABELS,
 )
+from app.core.es import get_es
+from app.api.routes.policy.es_query import search_policy_ids
 
 router = APIRouter(prefix="/policy", tags=["policy"])
+
+logger = logging.getLogger(__name__)
 
 KST = timezone(timedelta(hours=9))
 
@@ -190,6 +195,23 @@ def _to_card(p: Policy, inq_cnt: Optional[int] = None) -> PolicyCard:
     )
 
 
+def _hydrate_cards(db: Session, plcy_nos: List[str], size: int) -> List[PolicyCard]:
+    # ES가 반환한 plcy_no 순서열 → PG 재조회 → 카드 조립 (dday 등 시점 파생값은 여기서 계산).
+    # IN 조회는 순서를 보장하지 않으므로 ES 순서로 재정렬 후 size로 절단한다.
+    # 색인 이후 소프트만료된 문서는 is_active 필터에서 자연 탈락 — ES 요청의 여유분이 보충.
+    if not plcy_nos:
+        return []
+    rows = (
+        db.query(Policy, PolicyStats.inq_cnt)
+        .outerjoin(PolicyStats, PolicyStats.plcy_no == Policy.plcy_no)
+        .filter(Policy.plcy_no.in_(plcy_nos), Policy.is_active.is_(True))
+        .all()
+    )
+    by_no = {p.plcy_no: (p, cnt) for p, cnt in rows}
+    ordered = [by_no[no] for no in plcy_nos if no in by_no][:size]
+    return [_to_card(p, cnt) for p, cnt in ordered]
+
+
 # ── /get/policies(목록)·/get/search(코드검색) 공용 필터·정렬 헬퍼 ──
 def _apply_text_filter(q, term: Optional[str]):
     # q(정책명 부분일치 검색) — pg_trgm GIN(idx_policy_nm_trgm)이 ILIKE를 가속.
@@ -304,6 +326,29 @@ def list_policies(
     if cached is not None:
         return Response(content=cached, media_type="application/json")
 
+    # ── ES 분기: q 검색만 ES(nori 형태소·멀티필드·관련도)로. q 없는 목록은 항상 PG ──
+    # 실패 시 아래 PG 경로로 폴백하되, 폴백 응답은 캐시에 저장하지 않는다 —
+    # ES 복구 후에도 ILIKE 품질 응답이 자정(TTL)까지 잔존하는 회귀 방지.
+    # ES 미설정(get_es()=None, 로컬 기본)은 폴백이 아니라 정상 PG 경로 — 캐시 저장 유지.
+    cache_allowed = True
+    es = get_es() if q_text and q_text.strip() else None
+    if es is not None:
+        try:
+            plcy_nos, total = search_policy_ids(
+                es, q_text=q_text, category=category, keywords=keywords, sido=sido,
+                age=age, applicable=applicable, sort=sort, page=page, size=size,
+                today_kst=_today_kst(),
+            )
+            resp = PolicyListResponse(
+                total=total, page=page, size=size,
+                items=_hydrate_cards(db, plcy_nos, size),
+            )
+            policy_cache_set("list", cache_id, resp.model_dump_json())
+            return resp
+        except Exception as e:
+            logger.warning("ES 검색 실패 — PG 폴백: %s: %s", type(e).__name__, e)
+            cache_allowed = False
+
     q = (
         db.query(Policy, PolicyStats.inq_cnt)
         .outerjoin(PolicyStats, PolicyStats.plcy_no == Policy.plcy_no)
@@ -320,7 +365,8 @@ def list_policies(
         total=total, page=page, size=size,
         items=[_to_card(p, inq_cnt) for p, inq_cnt in rows],
     )
-    policy_cache_set("list", cache_id, resp.model_dump_json())
+    if cache_allowed:
+        policy_cache_set("list", cache_id, resp.model_dump_json())
     return resp
 
 
