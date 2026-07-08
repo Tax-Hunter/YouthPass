@@ -10,7 +10,8 @@ _apply_base_filters와 1:1 동치여야 한다(ES↔PG 폴백 간 결과 일관�
 - popular/deadline: 기존 SQL 정렬 의미를 그대로 복제(NULLS LAST + plcy_no DESC tiebreak).
 - deadline의 '오늘'은 질의 시점 KST — 색인에 구우면 자정 경계 오차(_apply_sort와 동일 원칙).
 
-페이지네이션: from/size + 여유분(HYDRATION_BUFFER) — hydration에서 is_active 탈락분 보충.
+페이지네이션: from/size를 정확히 요청 — hydration에서 소프트만료분 탈락 시 짧은 페이지를
+허용한다(버퍼로 채우면 페이지 경계에서 카드 중복 → 무한스크롤 key 충돌, 중복보다 짧음이 무해).
 total은 track_total_hits로 정확값(2,600건 규모라 비용 없음).
 """
 from datetime import date
@@ -21,12 +22,10 @@ from elasticsearch import Elasticsearch
 from app.core.config import settings
 from app.api.routes.policy.constants import APLY_PRD_CLOSED
 
-# ES 색인~PG 재조회 사이에 소프트만료된 문서의 탈락 보충용 여유분 (3일 재색인 창에서 ±수건)
-HYDRATION_BUFFER = 5
-
 # 검색 대상 필드와 부스트 — 제목 > 키워드 > 중분류 > 본문 (phase1 8절)
 _SEARCH_FIELDS = [
     "plcy_nm^3",
+    "plcy_nm.ngram^0.5",   # nori 오분절('도전'→'도'삭제 등) 대비 리터럴 부분문자열 안전망(낮은 가중)
     "keywords.text^2",
     "mclsf_nm^1.5",
     "plcy_expln_cn",
@@ -128,14 +127,19 @@ def build_search_body(
                 "query": q_text,
                 "type": "best_fields",
                 "fields": _SEARCH_FIELDS,
+                # 순수 OR는 다단어 질의 total을 코퍼스 대부분까지 부풀림 → 질의어의 75%가 매칭돼야 함
+                "minimum_should_match": "75%",
             }}],
             # 정확 문구 일치는 상위 노출 (should = 점수 가산만, 매칭 조건 아님)
-            "should": [{"match_phrase": {"plcy_nm": {"query": q_text, "boost": 5}}}],
+            # analyzer 미지정 시 필드 search_analyzer(korean_search=동의어 포함)가 적용돼
+            # "정확 문구"가 동의어로 확장·오염된다 → 색인용(동의어 없는) korean_index로 고정.
+            "should": [{"match_phrase": {"plcy_nm": {
+                "query": q_text, "boost": 5, "analyzer": "korean_index"}}}],
             "filter": filters,
         }},
         "sort": _sort_clause(sort, has_query=True, today_kst=today_kst),
         "from": (page - 1) * size,
-        "size": size + HYDRATION_BUFFER,
+        "size": size,
         "track_total_hits": True,
     }
 

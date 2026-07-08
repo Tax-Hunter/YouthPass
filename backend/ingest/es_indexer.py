@@ -63,7 +63,9 @@ class EsIndexReport:
 
 def _to_doc(row: Tuple) -> dict:
     doc = dict(zip(_POLICY_FIELDS, row[:-1]))
-    doc["inq_cnt"] = row[-1] or 0
+    # None 보존(0으로 강등 금지) — ES 매핑 integer는 null 허용, missing:_last 정렬이
+    # PG의 NULLS LAST와 정확히 일치해야 popular 정렬 순서가 ES↔PG 동일해진다.
+    doc["inq_cnt"] = row[-1]
     for f in ("apply_end_date", "first_seen_at"):
         if doc[f] is not None:
             doc[f] = doc[f].isoformat()

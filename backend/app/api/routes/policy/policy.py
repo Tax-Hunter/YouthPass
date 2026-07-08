@@ -307,6 +307,43 @@ def _apply_sort(q, sort: str):
     return q.order_by(Policy.first_seen_at.desc().nullslast(), Policy.plcy_no.desc())
 
 
+def _es_search(
+    db: Session, *, cache_kind: str, cache_id: str, q_text, category, keywords,
+    sido, age, applicable, sort, page, size,
+) -> Tuple[Optional[PolicyListResponse], bool]:
+    """q 검색을 ES(nori 형태소·멀티필드·관련도)로 시도. 반환 (응답 or None, cache_allowed).
+
+    - (None, True):  q 없음 또는 ES 미설정 — 정상 PG 경로(폴백 아님, 캐시 저장 유지)
+    - (None, False): ES 시도 중 실패 — PG 폴백, 폴백 응답은 캐시 저장 스킵(품질 저하 잔존 방지)
+    - (응답, True):  ES 성공 — 응답은 이미 캐시에 저장됨
+    get_es()는 잘못된 URL에 생성자 예외를 던질 수 있어 반드시 try 안에서 호출한다(fail-open).
+    """
+    if not (q_text and q_text.strip()):
+        return None, True
+    # ES max_result_window(10,000) 초과 깊은 페이지는 400을 내므로 PG로 — 정상 경로(폴백 아님, 캐시 가능)
+    if (page - 1) * size + size > 10_000:
+        return None, True
+    try:
+        es = get_es()
+        if es is None:
+            return None, True
+        plcy_nos, total = search_policy_ids(
+            es, q_text=q_text, category=category, keywords=keywords, sido=sido,
+            age=age, applicable=applicable, sort=sort, page=page, size=size,
+            today_kst=_today_kst(),
+        )
+        resp = PolicyListResponse(
+            total=total, page=page, size=size,
+            items=_hydrate_cards(db, plcy_nos, size),
+        )
+        policy_cache_set(cache_kind, cache_id, resp.model_dump_json())
+        return resp, True
+    except Exception as e:
+        logger.warning("ES 검색 실패 — PG 폴백: %s: %s", type(e).__name__, e)
+        db.rollback()  # ES 성공 후 hydration DB 오류 시 세션 오염 → 폴백 쿼리 PendingRollbackError 방지
+        return None, False
+
+
 @router.get("/get/policies", response_model=PolicyListResponse)
 def list_policies(
     db: Session = Depends(get_db),
@@ -327,27 +364,11 @@ def list_policies(
         return Response(content=cached, media_type="application/json")
 
     # ── ES 분기: q 검색만 ES(nori 형태소·멀티필드·관련도)로. q 없는 목록은 항상 PG ──
-    # 실패 시 아래 PG 경로로 폴백하되, 폴백 응답은 캐시에 저장하지 않는다 —
-    # ES 복구 후에도 ILIKE 품질 응답이 자정(TTL)까지 잔존하는 회귀 방지.
-    # ES 미설정(get_es()=None, 로컬 기본)은 폴백이 아니라 정상 PG 경로 — 캐시 저장 유지.
-    cache_allowed = True
-    es = get_es() if q_text and q_text.strip() else None
-    if es is not None:
-        try:
-            plcy_nos, total = search_policy_ids(
-                es, q_text=q_text, category=category, keywords=keywords, sido=sido,
-                age=age, applicable=applicable, sort=sort, page=page, size=size,
-                today_kst=_today_kst(),
-            )
-            resp = PolicyListResponse(
-                total=total, page=page, size=size,
-                items=_hydrate_cards(db, plcy_nos, size),
-            )
-            policy_cache_set("list", cache_id, resp.model_dump_json())
-            return resp
-        except Exception as e:
-            logger.warning("ES 검색 실패 — PG 폴백: %s: %s", type(e).__name__, e)
-            cache_allowed = False
+    es_resp, cache_allowed = _es_search(
+        db, cache_kind="list", cache_id=cache_id, q_text=q_text, category=category,
+        keywords=keywords, sido=sido, age=age, applicable=applicable, sort=sort, page=page, size=size)
+    if es_resp is not None:
+        return es_resp
 
     q = (
         db.query(Policy, PolicyStats.inq_cnt)
@@ -413,6 +434,17 @@ def search_policies(
     if cached is not None:
         return Response(content=cached, media_type="application/json")
 
+    # 코드필터 8종은 ES에 미색인(PG 영구 유지) → 코드필터 없는 q 검색만 ES 경유.
+    # dev 프론트가 /get/search를 텍스트 검색에 쓰므로(SearchScreen은 q만 전송) 이 경로가 실사용됨.
+    if any(code_params.values()):
+        cache_allowed = True
+    else:
+        es_resp, cache_allowed = _es_search(
+            db, cache_kind="search", cache_id=cache_id, q_text=q_text, category=category,
+            keywords=keywords, sido=sido, age=age, applicable=applicable, sort=sort, page=page, size=size)
+        if es_resp is not None:
+            return es_resp
+
     q = (
         db.query(Policy, PolicyStats.inq_cnt)
         .outerjoin(PolicyStats, PolicyStats.plcy_no == Policy.plcy_no)
@@ -430,7 +462,8 @@ def search_policies(
         total=total, page=page, size=size,
         items=[_to_card(p, inq_cnt) for p, inq_cnt in rows],
     )
-    policy_cache_set("search", cache_id, resp.model_dump_json())
+    if cache_allowed:
+        policy_cache_set("search", cache_id, resp.model_dump_json())
     return resp
 
 

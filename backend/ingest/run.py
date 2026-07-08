@@ -177,6 +177,9 @@ def cmd_reindex(args) -> int:
         print("reindex는 ELASTICSEARCH_URL 설정이 필요합니다 (backend/.env 또는 Railway 변수).",
               file=sys.stderr)
         return EXIT_CONFIG
+    # 실제 재색인으로 alias가 새 인덱스로 바뀌었으므로 캐시 무효화 — 없으면 구 결과가 KST 자정까지 잔존.
+    if not args.dry_run and bump_policy_cache_version():
+        print("정책 응답 캐시 무효화(버전 bump)")
     return EXIT_OK
 
 
