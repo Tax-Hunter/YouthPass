@@ -9,13 +9,15 @@
 - dynamic: strict — 색인 파이프라인이 정의 밖 필드를 넣으면 즉시 실패시켜 매핑 드리프트를 방지.
 """
 
-# 검색 시점 동의어 시드 — 통제어휘 17종·category 5종 기반, 수동 큐레이션으로 확장
+# 검색 시점 동의어 시드 — 통제어휘 17종·category 5종 기반, 수동 큐레이션으로 확장.
+# 주의: 코퍼스 준불용어는 넣지 말 것 — '사업'은 제목 절반가량('…지원사업')에 등장해
+# '창업' 질의의 매칭 집합을 폭증시키는 것이 실측으로 확인되어 제거함 (적대적 검증 F-12).
 SYNONYMS = [
     "일자리, 취업, 구직, 채용, 인턴, 일경험",
     "주거, 월세, 전세, 임대, 보증금",
     "금융, 대출, 이자, 적금, 통장, 계좌",
     "교육, 훈련, 강의, 교육비",
-    "창업, 벤처, 사업",
+    "창업, 벤처",
     "지원금, 수당, 바우처, 보조금",
 ]
 
@@ -43,6 +45,16 @@ ANALYSIS = {
             "type": "nori_tokenizer",
             "decompound_mode": "none",
         },
+        # 정책명 리터럴 안전망용 문자 n-gram (2~3자).
+        # nori가 신조어 정책명을 오분절해 핵심 형태소를 잃는 경우(예: '청년도전지원사업' →
+        # 도/J 삭제로 '도전' 토큰 소실 — 실측 21/33건 recall 누락) ILIKE 이상의 부분문자열
+        # recall을 보장한다. 색인·검색 동일 분석기 사용.
+        "korean_ngram": {
+            "type": "ngram",
+            "min_gram": 2,
+            "max_gram": 3,
+            "token_chars": ["letter", "digit"],
+        },
     },
     "filter": {
         "korean_pos": {
@@ -66,6 +78,11 @@ ANALYSIS = {
             "tokenizer": "korean_nori_query",
             "filter": ["korean_pos", "lowercase", "search_synonyms"],
         },
+        "korean_ngram_analyzer": {
+            "type": "custom",
+            "tokenizer": "korean_ngram",
+            "filter": ["lowercase"],
+        },
     },
 }
 
@@ -83,12 +100,14 @@ MAPPINGS = {
     "properties": {
         # 식별·정렬 (문서 _id도 plcy_no를 사용하지만 tiebreak 정렬용 필드로 중복 보유)
         "plcy_no": {"type": "keyword"},
-        # 텍스트 검색 대상
-        "plcy_nm": _korean_text(),
+        # 텍스트 검색 대상 — plcy_nm.ngram은 nori 오분절 대비 리터럴 안전망(부분문자열 recall)
+        "plcy_nm": {**_korean_text(), "fields": {
+            "ngram": {"type": "text", "analyzer": "korean_ngram_analyzer"},
+        }},
         "plcy_expln_cn": _korean_text(),
         "plcy_sprt_cn": _korean_text(),
         "mclsf_nm": _korean_text(),
-        "sprvsn_inst_cd_nm": {**_korean_text(), "fields": {"raw": {"type": "keyword"}}},
+        "sprvsn_inst_cd_nm": _korean_text(),
         # keywords: terms 필터(overlap 의미론) + 텍스트 검색 겸용
         "keywords": {"type": "keyword", "fields": {"text": _korean_text()}},
         # 필터 필드 (backend/app/api/routes/policy/policy.py _apply_base_filters 의미론과 1:1)
