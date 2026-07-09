@@ -1,1 +1,62 @@
+# CLAUDE / AI 어시스턴트
 .claude/
+.claudeignore
+CLAUDE.md
+AGENTS.md
+
+# 기획 및 작업 기록
+PRD/
+workflow/
+
+# 환경변수
+.env
+.env.*
+!.env.example
+
+# 로컬 HTTPS 인증서
+backend/certs/
+
+# Python
+backend/venv/
+backend/.venv/
+venv/
+.venv/
+backend/__pycache__/
+backend/**/__pycache__/
+backend/**/*.pyc
+backend/.pytest_cache/
+.pytest_cache/
+.mypy_cache/
+
+# Node
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+frontend/.eslintcache
+frontend/*.tsbuildinfo
+
+# 로그
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDEs
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Databases
+*.db
+*.sqlite3
+
+# run.bat
+run.bat
+
+# Documentation
+docs/

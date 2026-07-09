@@ -1,0 +1,94 @@
+@import "tailwindcss";
+
+:root {
+  --background: #0c0c12;
+  --foreground: #f0f0f8;
+}
+
+html {
+  overscroll-behavior: none;
+  scrollbar-gutter: stable;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: 'Pretendard Variable', 'Pretendard', -apple-system, 'Apple SD Gothic Neo', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  overscroll-behavior: none;
+  word-break: keep-all;
+}
+
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
+
+/* Scroll Utilities */
+@utility scroll-stable {
+  scrollbar-gutter: stable;
+}
+
+/* Safe Area Utilities */
+@utility pt-header {
+  padding-top: calc(4.75rem + env(safe-area-inset-top, 0px));
+}
+@utility pt-header-list {
+  padding-top: calc(5.25rem + env(safe-area-inset-top, 0px));
+}
+@utility top-header {
+  top: calc(4.75rem + env(safe-area-inset-top, 0px));
+}
+@utility top-header-min {
+  top: calc(3.375rem + env(safe-area-inset-top, 0px));
+}
+@utility pb-safe {
+  padding-bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
+}
+@utility pb-safe-xl {
+  padding-bottom: calc(2rem + env(safe-area-inset-bottom, 0px));
+}
+
+/* Screen Layout Utility — 화면 좌우 여백 통일 (변경 시 여기 한 곳만 수정) */
+@utility px-screen {
+  padding-left: 1.5rem;
+  padding-right: 1.5rem;
+}
+
+/* Custom Keyframe Animations */
+@keyframes slide-left {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+
+@keyframes slide-up {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes bounce-subtle {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+
+/* Animation Utilities */
+.animate-slide-left {
+  animation: slide-left 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-slide-up {
+  animation: slide-up 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-fade-in {
+  animation: fade-in 0.2s ease-out forwards;
+}
+
+.animate-bounce-subtle {
+  animation: bounce-subtle 2s ease-in-out infinite;
+}
+
