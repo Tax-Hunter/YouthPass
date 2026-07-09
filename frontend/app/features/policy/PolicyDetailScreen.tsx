@@ -3,6 +3,7 @@
 import React from "react";
 import { useSearchParams } from "next/navigation";
 import { useBookmarkStore } from "@/lib/store/bookmarkStore";
+import { useAuthStore } from "@/lib/store/authStore";
 import { useFilterStore } from "@/lib/store/filterStore";
 import { usePolicyDetail } from "@/lib/api/policy";
 import Badge from "@/app/components/ui/Badge";
@@ -37,12 +38,13 @@ function Section({ title, icon, accent = "blue", children }: {
 
 export default function PolicyDetailScreen({ onNavigate }: ScreenProps) {
   const { toggle: toggleBookmark, isBookmarked } = useBookmarkStore();
+  const { user } = useAuthStore();
   const { filters } = useFilterStore();
   const searchParams = useSearchParams();
   const policyId = searchParams.get("id");
   const { policy, isLoading, error } = usePolicyDetail(policyId);
 
-  const isFav = policy ? isBookmarked(policy.plcy_no) : false;
+  const isFav = !!user && policy ? isBookmarked(policy.plcy_no) : false;
   const hasLink = !!policy?.aply_url_addr;
   const isClosed = policy?.dday === "마감";
 
@@ -259,19 +261,21 @@ export default function PolicyDetailScreen({ onNavigate }: ScreenProps) {
 
       {/* ── Bottom action bar (always pinned to screen bottom) ── */}
       <div className="shrink-0 px-screen pt-4 border-t border-slate-100 bg-white flex items-center gap-3 pb-safe z-10">
-        <button
-          onClick={() => policy && toggleBookmark(policy.plcy_no)}
-          disabled={isLoading || !policy}
-          className={`w-14 h-14 shrink-0 rounded-2xl border-2 flex items-center justify-center transition-all active:scale-90 disabled:opacity-40 disabled:cursor-not-allowed ${
-            isFav
-              ? "bg-rose-50 border-rose-200 text-rose-500"
-              : "bg-white border-slate-200 text-slate-400 hover:border-rose-200 hover:text-rose-400"
-          }`}
-        >
-          <svg className={`w-6 h-6 ${isFav ? "fill-current" : "fill-none"}`} stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-          </svg>
-        </button>
+        {!!user && (
+          <button
+            onClick={() => policy && toggleBookmark(policy.plcy_no)}
+            disabled={isLoading || !policy}
+            className={`w-14 h-14 shrink-0 rounded-2xl border-2 flex items-center justify-center transition-all active:scale-90 disabled:opacity-40 disabled:cursor-not-allowed ${
+              isFav
+                ? "bg-rose-50 border-rose-200 text-rose-500"
+                : "bg-white border-slate-200 text-slate-400 hover:border-rose-200 hover:text-rose-400"
+            }`}
+          >
+            <svg className={`w-6 h-6 ${isFav ? "fill-current" : "fill-none"}`} stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+            </svg>
+          </button>
+        )}
 
         <button
           onClick={() => {
