@@ -88,12 +88,15 @@ export default function Header({
       <img
         src="/images/logo.png"
         alt="청년패스 로고"
+        draggable={false}
         style={{
           width: "auto",
           height: isScrolled ? "2.25rem" : "3.75rem",
           transition: "height 250ms ease-out",
-        }}
-        className="object-contain rounded-md"
+          WebkitUserDrag: "none",
+          userSelect: "none",
+        } as React.CSSProperties}
+        className="object-contain rounded-md pointer-events-none select-none"
       />
     </button>
   );
