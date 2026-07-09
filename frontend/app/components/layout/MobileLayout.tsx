@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, Suspense, useEffect } from "react";
+import React, { useState, Suspense, useEffect, useRef } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Header from "./Header";
 import ProfileScreen from "@/app/features/auth/ProfileScreen";
@@ -17,11 +17,18 @@ export default function MobileLayout({ children }: Props) {
   const router = useRouter();
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isHeaderScrolled, setIsHeaderScrolled] = useState(false);
-  const { loginModalOpen, closeLoginModal, supportModalOpen, closeSupportModal, closeSearchInput } = useUiStore();
+  const { loginModalOpen, closeLoginModal, supportModalOpen, closeSupportModal, closeSearchInput, bumpSearchVisit } = useUiStore();
+  const prevPathnameRef = useRef(pathname);
 
   useEffect(() => {
-    if (pathname !== "/search") closeSearchInput();
-  }, [pathname, closeSearchInput]);
+    if (pathname !== "/search") {
+      closeSearchInput();
+    } else if (prevPathnameRef.current !== "/search") {
+      // 다른 화면에서 /search로 (재)진입한 시점 — 검색 화면을 항상 초기 상태로 리마운트
+      bumpSearchVisit();
+    }
+    prevPathnameRef.current = pathname;
+  }, [pathname, closeSearchInput, bumpSearchVisit]);
 
   // Prefetch other static pages for smoother transitions
   useEffect(() => {
