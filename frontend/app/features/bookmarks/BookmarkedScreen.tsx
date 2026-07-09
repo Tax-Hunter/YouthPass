@@ -88,6 +88,19 @@ export default function BookmarkedScreen({ onNavigate }: ScreenProps) {
     isBookmarked,
   } = useBookmarkStore();
   const [activeTag, setActiveTag] = useState("전체");
+  // 동일한 찜 목록으로 재클릭 시 서버 요청 없이 캐시된 URL을 재사용 — 백엔드 중복 방지 로직과
+  // 무관하게 클라이언트 단에서도 불필요한 공유 링크 생성 요청을 막는 이중 안전장치
+  const [shareCache, setShareCache] = useState<{ key: string; url: string } | null>(null);
+  const bookmarksKey = [...bookmarks].sort().join(",");
+
+  const getShareUrl = async () => {
+    if (shareCache && shareCache.key === bookmarksKey) {
+      return shareCache.url;
+    }
+    const url = await createShareUrl(bookmarks);
+    setShareCache({ key: bookmarksKey, url });
+    return url;
+  };
 
   const tags = ["전체", "#주거", "#금융", "#일자리", "#교육"];
 
@@ -106,7 +119,7 @@ export default function BookmarkedScreen({ onNavigate }: ScreenProps) {
         <ShareButton
           className="text-xs font-bold"
           disabled={bookmarks.length === 0}
-          getUrl={() => createShareUrl(bookmarks)}
+          getUrl={getShareUrl}
         />
       </div>
 

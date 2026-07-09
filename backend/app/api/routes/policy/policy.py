@@ -532,6 +532,27 @@ def create_bookmark_share(body: ShareCreateRequest, db: Session = Depends(get_db
         raise HTTPException(status_code=400, detail="no valid policies to share")
 
     now = datetime.now(timezone.utc)
+
+    # 동일한 찜 목록(구성 무관, 순서 무관)에 대해 아직 만료되지 않은 공유 링크가 있으면 재사용 —
+    # 매 클릭마다 새 URL이 생기지 않도록 함. 배열 순서 그대로 비교(==)하면 찜 해제/재추가로
+    # 순서만 바뀌어도 다른 스냅샷으로 오판되므로, 정렬된 값으로 비교한다.
+    sorted_key = sorted(plcy_nos)
+    same_length_candidates = (
+        db.query(BookmarkShare)
+        .filter(func.array_length(BookmarkShare.plcy_nos, 1) == len(plcy_nos))
+        .filter(or_(BookmarkShare.expires_at.is_(None), BookmarkShare.expires_at > now))
+        .order_by(BookmarkShare.created_at.desc())
+        .all()
+    )
+    existing_share = next(
+        (row for row in same_length_candidates if sorted(row.plcy_nos) == sorted_key),
+        None,
+    )
+    if existing_share is not None:
+        return ShareCreateResponse(
+            share_code=existing_share.share_code, expires_at=existing_share.expires_at
+        )
+
     share = BookmarkShare(
         share_code=_generate_share_code(db),
         plcy_nos=plcy_nos,
