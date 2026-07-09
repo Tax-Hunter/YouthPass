@@ -25,7 +25,7 @@ export default function FilterScreen({ onNavigate }: ScreenProps) {
 
   const resetFilters = () => {
     setCity("전국");
-    setEmployment("미취업");
+    setEmployment("");
     setCategories({
       주거: false,
       금융: false,
@@ -38,7 +38,7 @@ export default function FilterScreen({ onNavigate }: ScreenProps) {
   const applyFilters = () => {
     const isNeutral =
       city === "전국" &&
-      employment === "미취업" &&
+      employment === "" &&
       !Object.values(categories).some(Boolean);
 
     if (isNeutral) {
@@ -115,7 +115,9 @@ export default function FilterScreen({ onNavigate }: ScreenProps) {
                     key={status}
                     label={status}
                     isActive={employment === status}
-                    onClick={() => setEmployment(status)}
+                    onClick={() =>
+                      setEmployment(employment === status ? "" : status)
+                    }
                     className="py-3 px-2"
                   />
                 ))}

@@ -4,7 +4,7 @@ import type { FilterState } from "@/lib/types"
 
 export const DEFAULT_FILTERS: FilterState = {
   city: "전국",
-  employment: "미취업",
+  employment: "",
   categories: {
     주거: false,
     금융: false,
