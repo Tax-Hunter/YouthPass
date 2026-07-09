@@ -301,12 +301,13 @@ export default function SearchScreen({ onNavigate }: ScreenProps) {
               <PolicyCard
                 key={policy.plcy_no}
                 policy={policy}
-                isBookmarked={isBookmarked(policy.plcy_no)}
+                isBookmarked={!!user && isBookmarked(policy.plcy_no)}
                 onToggleBookmark={() => toggleBookmark(policy.plcy_no)}
                 onClick={() => handleCardClick(policy.plcy_no)}
                 showCategory={true}
                 showLocation={true}
                 showActionText={true}
+                showBookmark={!!user}
               />
             ))
           )}
