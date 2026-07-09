@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { useBookmarkStore } from "@/lib/store/bookmarkStore";
+import { useAuthStore } from "@/lib/store/authStore";
 import {
   useInfinitePolicyList,
   sortPoliciesByDeadline,
@@ -9,6 +10,7 @@ import {
 import { useInfiniteScrollSentinel } from "@/lib/useInfiniteScrollSentinel";
 import { useFilterStore } from "@/lib/store/filterStore";
 import { useUiStore } from "@/lib/store/uiStore";
+import { useRecentSearchStore } from "@/lib/store/recentSearchStore";
 import { cityToSido } from "@/lib/sidoMap";
 import { employmentToJobCodes } from "@/lib/jobCodeMap";
 import PolicyCard from "@/app/components/ui/PolicyCard";
@@ -26,30 +28,45 @@ export default function SearchScreen({ onNavigate }: ScreenProps) {
   const isSearchOpen = useUiStore((s) => s.searchInputOpen);
   const toggleSearchInput = useUiStore((s) => s.toggleSearchInput);
   const closeSearchInput = useUiStore((s) => s.closeSearchInput);
-  const [recentSearches, setRecentSearches] = useState<string[]>([
-    "월세 지원",
-    "청년 주거",
-    "전세 대출",
-  ]);
+  const { recentSearches, addRecentSearch, clearRecentSearches } =
+    useRecentSearchStore();
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [isSurveyOpen, setIsSurveyOpen] = useState(false);
   const [showClosedOnly, setShowClosedOnly] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const { toggle: toggleBookmark, isBookmarked } = useBookmarkStore();
   const { filters, filterApplied, _hasHydrated } = useFilterStore();
+  const { user } = useAuthStore();
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedTerm(searchTerm.trim()), 400);
     return () => clearTimeout(t);
   }, [searchTerm]);
 
+  const wasSearchOpenRef = useRef(isSearchOpen);
+  const skipNextResetRef = useRef(false);
+
   useEffect(() => {
-    if (isSearchOpen) requestAnimationFrame(() => inputRef.current?.focus());
+    const wasOpen = wasSearchOpenRef.current;
+    wasSearchOpenRef.current = isSearchOpen;
+    if (!isSearchOpen || wasOpen) return;
+    // 검색 아이콘으로 새로 열릴 때는 이전 검색어를 지우고 빈 입력으로 시작
+    // (최근 검색어 클릭으로 열리는 경우는 handleRecentClick에서 skipNextResetRef로 예외 처리)
+    if (skipNextResetRef.current) {
+      skipNextResetRef.current = false;
+    } else {
+      setSearchTerm("");
+      setDebouncedTerm("");
+    }
+    requestAnimationFrame(() => inputRef.current?.focus());
   }, [isSearchOpen]);
 
   const effectiveQuery = isSearchOpen ? debouncedTerm : "";
 
   const hasSurvey = filters.age != null;
+  // 설문 완료 배너는 서버에 기록된 완료 여부(user.survey_completed)를 우선 신뢰 —
+  // 로컬 filters.age가 초기화/미동기화된 상태에서도 완료된 사용자에게 배너가 다시 뜨지 않도록 함
+  const surveyCompleted = !!user?.survey_completed || hasSurvey;
   const sido = filterApplied ? cityToSido(filters.city) : undefined;
   const appliedCategories = filterApplied
     ? Object.entries(filters.categories)
@@ -88,12 +105,11 @@ export default function SearchScreen({ onNavigate }: ScreenProps) {
     const term = searchTerm.trim();
     if (!term) return;
     setDebouncedTerm(term);
-    if (!recentSearches.includes(term)) {
-      setRecentSearches((prev) => [term, ...prev.slice(0, 2)]);
-    }
+    addRecentSearch(term);
   };
 
   const handleRecentClick = (term: string) => {
+    skipNextResetRef.current = true;
     setSearchTerm(term);
     setDebouncedTerm(term);
     toggleSearchInput();
@@ -117,7 +133,7 @@ export default function SearchScreen({ onNavigate }: ScreenProps) {
     <div className="flex flex-col h-full bg-white text-slate-800 font-sans select-none overflow-hidden relative">
       <div className="flex-1 min-h-0 overflow-y-auto pt-header pb-24">
         {/* 설문 미실시 시에만 노출되는 설문 유도 배너 */}
-        {!hasSurvey && _hasHydrated && (
+        {!surveyCompleted && _hasHydrated && (
           <div className="px-screen pt-4">
             <button
               onClick={() => setIsSurveyOpen(true)}
@@ -159,7 +175,7 @@ export default function SearchScreen({ onNavigate }: ScreenProps) {
                   </span>
                   <button
                     type="button"
-                    onClick={() => setRecentSearches([])}
+                    onClick={() => clearRecentSearches()}
                     className="text-[10px] font-bold text-slate-400 hover:text-slate-600 hover:underline"
                   >
                     전체 삭제
