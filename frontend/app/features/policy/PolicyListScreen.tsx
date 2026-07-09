@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useBookmarkStore } from "@/lib/store/bookmarkStore";
+import { useAuthStore } from "@/lib/store/authStore";
 import {
   useInfinitePolicyList,
   sortPoliciesByDeadline,
@@ -25,8 +26,12 @@ export default function PolicyListScreen({ onNavigate }: ScreenProps) {
   const [isSurveyOpen, setIsSurveyOpen] = useState(false);
   const { isBookmarked, toggle: toggleBookmark } = useBookmarkStore();
   const { filters, filterApplied, _hasHydrated } = useFilterStore();
+  const { user } = useAuthStore();
 
   const hasSurvey = filters.age != null;
+  // 설문 완료 배너는 서버에 기록된 완료 여부(user.survey_completed)를 우선 신뢰 —
+  // 로컬 filters.age가 초기화/미동기화된 상태에서도 완료된 사용자에게 배너가 다시 뜨지 않도록 함
+  const surveyCompleted = !!user?.survey_completed || hasSurvey;
   const applyLocation = hasSurvey || filterApplied;
   const sido = applyLocation ? cityToSido(filters.city) : undefined;
   // 매칭 점수 기반 추천 정렬(sort=recommended)은 백엔드 미구현으로 임시 비활성화.
@@ -82,7 +87,7 @@ export default function PolicyListScreen({ onNavigate }: ScreenProps) {
   return (
     <div className="flex flex-col h-full bg-slate-50 text-slate-800 font-sans select-none overflow-hidden relative">
       <div className="flex-1 min-h-0 overflow-y-auto scroll-stable px-screen pb-24 pt-header-list space-y-4">
-        {!hasSurvey && _hasHydrated && (
+        {!surveyCompleted && _hasHydrated && (
           <button
             onClick={() => setIsSurveyOpen(true)}
             className="w-full flex items-center justify-between px-4 py-3 bg-blue-50 border border-blue-200 rounded-2xl text-left active:scale-[0.99] transition-all"
