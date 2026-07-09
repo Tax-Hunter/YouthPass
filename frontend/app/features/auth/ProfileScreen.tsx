@@ -17,7 +17,10 @@ export default function ProfileScreen({ onNavigate, onClose }: ScreenProps) {
   const { openLoginModal, openSupportModal } = useUiStore();
   const router = useRouter();
   const { logout, isLoggingOut } = useLogout({
-    onSuccess: () => onClose?.(),
+    onSuccess: () => {
+      onClose?.();
+      router.replace("/home");
+    },
   });
 
   const displayName = isLoading
@@ -212,7 +215,7 @@ export default function ProfileScreen({ onNavigate, onClose }: ScreenProps) {
             </svg>
             {isLoggingOut ? "로그아웃 중..." : "로그아웃"}
           </button>
-          <span className="text-[10px] text-slate-400 font-bold font-mono">Youth Policy Portal v1.2.0</span>
+          <span className="text-[10px] text-slate-400 font-bold font-mono">Youth Policy Portal v1.0.0</span>
         </div>
       )}
 

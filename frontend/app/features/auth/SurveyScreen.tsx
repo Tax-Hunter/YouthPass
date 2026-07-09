@@ -248,8 +248,16 @@ export default function SurveyScreen({ onNavigate }: ScreenProps) {
   const selectedCount =
     Object.values(selectedCategories).filter(Boolean).length;
 
+  // 설문에는 사용자가 체감하는(한국식) 나이를 입력받고, 정책 연령 조건은 만 나이 기준이라
+  // 저장·전송 시점에 -1 규칙으로 변환한다.
+  const toManAge = (koreaAge: number) => koreaAge - 1;
+
   const canNext = () => {
-    if (step === 1) return age !== "" && Number(age) >= 19 && Number(age) <= 34;
+    if (step === 1) {
+      if (age === "") return false;
+      const manAge = toManAge(Number(age));
+      return manAge >= 19 && manAge <= 34;
+    }
     if (step === 2) return city !== "";
     if (step === 3) return selectedCount > 0;
     if (step === 4) return employmentStatus !== null;
@@ -266,11 +274,13 @@ export default function SurveyScreen({ onNavigate }: ScreenProps) {
       .filter(([, v]) => v)
       .map(([k]) => k);
 
+    const manAge = toManAge(Number(age));
+
     saveFilters({
       ...filters,
       city,
       categories: selectedCategories,
-      age: Number(age),
+      age: manAge,
     });
 
     if (user) {
@@ -282,7 +292,7 @@ export default function SurveyScreen({ onNavigate }: ScreenProps) {
         // 닉네임은 설문에서 별도로 받지 않고 구글 로그인 때 채워진 값을 그대로 사용
         // (SurveyRequest(POST)는 nickname이 필수(Field(..., min_length=2))라 항상 보내야 함)
         const surveyFields = {
-          age: Number(age),
+          age: manAge,
           region_city: city,
           interests,
           employment_status: employmentStatus,
@@ -378,7 +388,7 @@ export default function SurveyScreen({ onNavigate }: ScreenProps) {
   }, [step, isCityOpen, city, selectedCount, isSubmitting, goNext]);
 
   const stepMeta = [
-    { q: "나이가 어떻게 되시나요?", hint: "만 19~34세" },
+    { q: "나이가 어떻게 되시나요?", hint: "만 나이 기준 19~34세 (실제 나이를 입력해주세요)" },
     { q: "어디에 거주하시나요?", hint: "시·도 기준으로 선택해주세요" },
     {
       q: "어떤 분야 정책이\n필요하신가요?",
@@ -606,11 +616,6 @@ export default function SurveyScreen({ onNavigate }: ScreenProps) {
             </button>
             {error && (
               <p className="text-xs text-rose-500 font-semibold">{error}</p>
-            )}
-            {!user && (
-              <p className="text-xs text-slate-400 text-center">
-                로그인 없이도 필터 설정은 저장됩니다.
-              </p>
             )}
           </div>
         )}

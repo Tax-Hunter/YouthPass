@@ -24,7 +24,7 @@ export default function SharedBookmarksScreen({ code, onNavigate }: ScreenProps)
   return (
     <div className="flex flex-col h-full bg-white text-slate-800 font-sans select-none overflow-y-auto scroll-stable pt-header">
       <div className="px-screen pt-5 pb-3 shrink-0">
-        <h2 className="text-xl font-bold text-slate-900">공유받은 찜 목록</h2>
+        <h2 className="text-[16px] font-bold text-slate-900">공유 목록</h2>
       </div>
 
       <div className="border-t border-slate-50" />
