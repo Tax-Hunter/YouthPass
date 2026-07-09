@@ -3,6 +3,8 @@
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useBookmarkStore } from "@/lib/store/bookmarkStore";
+import { useAuthStore } from "@/lib/store/authStore";
+import { useUiStore } from "@/lib/store/uiStore";
 import { useFilterStore, DEFAULT_FILTERS } from "@/lib/store/filterStore";
 import { usePolicyList, sortPoliciesByDeadline } from "@/lib/api/policy";
 import PolicyCard from "@/app/components/ui/PolicyCard";
@@ -16,8 +18,18 @@ interface ScreenProps {
 export default function HomeScreen({ onNavigate }: ScreenProps) {
   const router = useRouter();
   const { toggle: toggleBookmark, isBookmarked } = useBookmarkStore();
+  const { user } = useAuthStore();
+  const { openLoginModal } = useUiStore();
   const { saveFilters } = useFilterStore();
   const [isSurveyOpen, setIsSurveyOpen] = useState(false);
+
+  const openSurvey = () => {
+    if (!user) {
+      openLoginModal();
+      return;
+    }
+    setIsSurveyOpen(true);
+  };
 
   const { data, error, isLoading } = usePolicyList({ sort: "deadline", size: 4, applicable: true });
   const sortedItems = data?.items ? sortPoliciesByDeadline(data.items) : [];
@@ -48,7 +60,7 @@ export default function HomeScreen({ onNavigate }: ScreenProps) {
         </div>
 
         <button
-          onClick={() => setIsSurveyOpen(true)}
+          onClick={openSurvey}
           className="relative z-10 px-5 py-2.5 bg-white text-blue-600 hover:bg-blue-50 text-[13px] font-bold rounded-xl shadow-md transition-all active:scale-[0.98]"
         >
           맞춤 정책 찾기

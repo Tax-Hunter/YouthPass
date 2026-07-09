@@ -28,6 +28,7 @@ export default function SearchScreen({ onNavigate }: ScreenProps) {
   const isSearchOpen = useUiStore((s) => s.searchInputOpen);
   const toggleSearchInput = useUiStore((s) => s.toggleSearchInput);
   const closeSearchInput = useUiStore((s) => s.closeSearchInput);
+  const openLoginModal = useUiStore((s) => s.openLoginModal);
   const { recentSearches, addRecentSearch, clearRecentSearches } =
     useRecentSearchStore();
   const [isFilterOpen, setIsFilterOpen] = useState(false);
@@ -37,6 +38,14 @@ export default function SearchScreen({ onNavigate }: ScreenProps) {
   const { toggle: toggleBookmark, isBookmarked } = useBookmarkStore();
   const { filters, filterApplied, _hasHydrated } = useFilterStore();
   const { user } = useAuthStore();
+
+  const openSurvey = () => {
+    if (!user) {
+      openLoginModal();
+      return;
+    }
+    setIsSurveyOpen(true);
+  };
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedTerm(searchTerm.trim()), 400);
@@ -136,7 +145,7 @@ export default function SearchScreen({ onNavigate }: ScreenProps) {
         {!surveyCompleted && _hasHydrated && (
           <div className="px-screen pt-4">
             <button
-              onClick={() => setIsSurveyOpen(true)}
+              onClick={openSurvey}
               className="w-full flex items-center justify-between px-4 py-3 bg-blue-50 border border-blue-200 rounded-2xl text-left active:scale-[0.99] transition-all"
             >
               <div>
