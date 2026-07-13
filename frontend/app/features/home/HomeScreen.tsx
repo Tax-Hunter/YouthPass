@@ -9,7 +9,11 @@ import { useFilterStore, DEFAULT_FILTERS } from "@/lib/store/filterStore";
 import { usePolicyList, sortPoliciesByDeadline } from "@/lib/api/policy";
 import PolicyCard from "@/app/components/ui/PolicyCard";
 import PromoBanner from "@/app/components/ui/PromoBanner";
+import HeroCarousel from "@/app/components/ui/HeroCarousel";
+import HeroBannerSlide from "@/app/components/ui/HeroBannerSlide";
 import SurveyScreen from "@/app/features/auth/SurveyScreen";
+
+const FEEDBACK_SURVEY_URL = "https://forms.gle/EXpjA71nBUiNqaqJ7";
 
 interface ScreenProps {
   onNavigate?: (screenId: string) => void;
@@ -31,6 +35,10 @@ export default function HomeScreen({ onNavigate }: ScreenProps) {
     setIsSurveyOpen(true);
   };
 
+  const openFeedbackSurvey = () => {
+    window.open(FEEDBACK_SURVEY_URL, "_blank", "noopener,noreferrer");
+  };
+
   const { data, error, isLoading } = usePolicyList({ sort: "deadline", size: 4, applicable: true });
   const sortedItems = data?.items ? sortPoliciesByDeadline(data.items) : [];
 
@@ -41,31 +49,59 @@ export default function HomeScreen({ onNavigate }: ScreenProps) {
   return (
     <div className="flex flex-col h-full bg-slate-50 text-slate-800 font-sans select-none relative overflow-hidden">
       <div className="flex-1 min-h-0 overflow-y-auto pt-header scroll-stable">
-      {/* Blue Hero Banner */}
-      <div className="bg-blue-600 text-white px-screen pt-9 pb-8 flex flex-col items-start gap-4 shrink-0 shadow-inner relative overflow-hidden">
-        <div className="absolute -top-12.5 -right-12.5 w-40 h-40 bg-white/10 rounded-full blur-2xl" />
-        <div className="absolute -bottom-7.5 -left-5 w-28 h-28 bg-blue-500 rounded-full blur-xl" />
-
-        <div className="relative z-10 space-y-2">
-          <h2 className="text-[22px] font-bold leading-tight">
-            내게 꼭 맞는 청년 정책,
-            <br />
-            1분 만에 찾아보세요
-          </h2>
-          <p className="text-xs text-blue-100/90 leading-relaxed font-medium">
-            나이, 거주지, 관심 분야만 입력하면
-            <br />
-            지금 바로 신청 가능한 지원금을 추천해드려요.
-          </p>
-        </div>
-
-        <button
-          onClick={openSurvey}
-          className="relative z-10 px-5 py-2.5 bg-white text-blue-600 hover:bg-blue-50 text-[13px] font-bold rounded-xl shadow-md transition-all active:scale-[0.98]"
-        >
-          맞춤 정책 찾기
-        </button>
-      </div>
+      {/* Hero Banner Carousel */}
+      <HeroCarousel
+        slides={[
+          {
+            id: "feedback-survey",
+            content: (
+              <HeroBannerSlide
+                theme="indigo"
+                title={
+                  <>
+                    청년패스 베타테스트에
+                    <br />
+                    참여해주세요.
+                  </>
+                }
+                subtitle={
+                  <>
+                    7.10 ~ 7.20
+                    <br />
+                    소중한 의견 부탁드려요.
+                  </>
+                }
+                buttonLabel="서비스 평가 설문 참여하기"
+                onButtonClick={openFeedbackSurvey}
+              />
+            ),
+          },
+          {
+            id: "policy-match",
+            content: (
+              <HeroBannerSlide
+                theme="blue"
+                title={
+                  <>
+                    내게 꼭 맞는 청년 정책,
+                    <br />
+                    1분 만에 찾아보세요
+                  </>
+                }
+                subtitle={
+                  <>
+                    나이, 거주지, 관심 분야만 입력하면
+                    <br />
+                    지금 바로 신청 가능한 지원금을 추천해드려요.
+                  </>
+                }
+                buttonLabel="맞춤 정책 찾기"
+                onButtonClick={openSurvey}
+              />
+            ),
+          },
+        ]}
+      />
 
       {/* Category Grid Section */}
       <section className="px-screen py-6 bg-white shrink-0 grid grid-cols-4 gap-3 border-b border-slate-100">
