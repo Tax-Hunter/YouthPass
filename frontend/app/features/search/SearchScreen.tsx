@@ -159,7 +159,7 @@ export default function SearchScreen({ onNavigate }: ScreenProps) {
                 <p className="text-[12px] font-extrabold text-blue-700">
                   설문을 완료하면 맞춤 정책을 추천해드려요
                 </p>
-                <p className="text-[10px] text-blue-500 font-semibold mt-0.5">
+                <p className="text-[9px] text-blue-500 font-semibold mt-0.5">
                   나이·지역·관심분야 1분 설정
                 </p>
               </div>
@@ -188,10 +188,10 @@ export default function SearchScreen({ onNavigate }: ScreenProps) {
           >
             <div>
               <p className="text-[12px] font-extrabold text-indigo-700">
-                청년패스 이용 설문에 참여해주세요
+                청년패스 베타테스트 설문에 참여해주세요 
               </p>
-              <p className="text-[10px] text-indigo-500 font-semibold mt-0.5">
-                서비스 개선을 위한 의견을 들려주세요
+              <p className="text-[9px] text-indigo-500 font-semibold mt-0.5">
+                ( 7.10 ~ 7.20 ) 서비스 개선을 위한 의견을 들려주세요
               </p>
             </div>
             <svg
