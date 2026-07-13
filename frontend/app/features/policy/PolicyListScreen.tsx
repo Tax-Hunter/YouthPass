@@ -9,6 +9,7 @@ import {
 } from "@/lib/api/policy";
 import { useInfiniteScrollSentinel } from "@/lib/useInfiniteScrollSentinel";
 import { useFilterStore } from "@/lib/store/filterStore";
+import { useUiStore } from "@/lib/store/uiStore";
 import { cityToSido } from "@/lib/sidoMap";
 import PolicyCard from "@/app/components/ui/PolicyCard";
 import FloatingFilterButton from "@/app/components/ui/FloatingFilterButton";
@@ -27,6 +28,15 @@ export default function PolicyListScreen({ onNavigate }: ScreenProps) {
   const { isBookmarked, toggle: toggleBookmark } = useBookmarkStore();
   const { filters, filterApplied, _hasHydrated } = useFilterStore();
   const { user } = useAuthStore();
+  const { openLoginModal } = useUiStore();
+
+  const openSurvey = () => {
+    if (!user) {
+      openLoginModal();
+      return;
+    }
+    setIsSurveyOpen(true);
+  };
 
   const hasSurvey = filters.age != null;
   // 설문 완료 배너는 서버에 기록된 완료 여부(user.survey_completed)를 우선 신뢰 —
@@ -89,7 +99,7 @@ export default function PolicyListScreen({ onNavigate }: ScreenProps) {
       <div className="flex-1 min-h-0 overflow-y-auto scroll-stable px-screen pb-24 pt-header-list space-y-4">
         {!surveyCompleted && _hasHydrated && (
           <button
-            onClick={() => setIsSurveyOpen(true)}
+            onClick={openSurvey}
             className="w-full flex items-center justify-between px-4 py-3 bg-blue-50 border border-blue-200 rounded-2xl text-left active:scale-[0.99] transition-all"
           >
             <div>
@@ -174,12 +184,13 @@ export default function PolicyListScreen({ onNavigate }: ScreenProps) {
             <PolicyCard
               key={policy.plcy_no}
               policy={policy}
-              isBookmarked={isBookmarked(policy.plcy_no)}
+              isBookmarked={!!user && isBookmarked(policy.plcy_no)}
               onToggleBookmark={() => toggleBookmark(policy.plcy_no)}
               onClick={() => handleCardClick(policy.plcy_no)}
               showCategory={true}
               showLocation={true}
               showActionText={true}
+              showBookmark={!!user}
             />
           ))
         )}

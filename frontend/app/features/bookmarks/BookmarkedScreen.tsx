@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { useBookmarkStore } from "@/lib/store/bookmarkStore";
+import { useAuthStore } from "@/lib/store/authStore";
 import { usePolicyDetail } from "@/lib/api/policy";
 import type { PolicyCardData } from "@/lib/api/policy";
 import { createShareUrl } from "@/lib/api/share";
@@ -20,6 +21,7 @@ function BookmarkedCard({
   onClick,
   activeTag,
   onInvalid,
+  showBookmark,
 }: {
   plcy_no: string;
   isBookmarked: boolean;
@@ -27,6 +29,7 @@ function BookmarkedCard({
   onClick: () => void;
   activeTag: string;
   onInvalid: (plcy_no: string) => void;
+  showBookmark: boolean;
 }) {
   const { policy, error, isLoading } = usePolicyDetail(plcy_no);
 
@@ -77,6 +80,7 @@ function BookmarkedCard({
       showCategory={true}
       showLocation={true}
       showActionText={false}
+      showBookmark={showBookmark}
     />
   );
 }
@@ -87,6 +91,7 @@ export default function BookmarkedScreen({ onNavigate }: ScreenProps) {
     toggle: toggleBookmark,
     isBookmarked,
   } = useBookmarkStore();
+  const { user } = useAuthStore();
   const [activeTag, setActiveTag] = useState("전체");
   // 동일한 찜 목록으로 재클릭 시 서버 요청 없이 캐시된 URL을 재사용 — 백엔드 중복 방지 로직과
   // 무관하게 클라이언트 단에서도 불필요한 공유 링크 생성 요청을 막는 이중 안전장치
@@ -164,11 +169,12 @@ export default function BookmarkedScreen({ onNavigate }: ScreenProps) {
             <BookmarkedCard
               key={plcy_no}
               plcy_no={plcy_no}
-              isBookmarked={isBookmarked(plcy_no)}
+              isBookmarked={!!user && isBookmarked(plcy_no)}
               onToggleBookmark={() => toggleBookmark(plcy_no)}
               onClick={() => handleCardClick(plcy_no)}
               activeTag={activeTag}
               onInvalid={toggleBookmark}
+              showBookmark={!!user}
             />
           ))
         )}
