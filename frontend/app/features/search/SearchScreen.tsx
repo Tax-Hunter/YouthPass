@@ -22,6 +22,9 @@ interface ScreenProps {
   onNavigate?: (screenId: string) => void;
 }
 
+const GOOGLE_FORM_URL =
+  "https://docs.google.com/forms/d/e/1FAIpQLSfhwYHXLamf7R0XRJS-jLhsu43Pj8wWKfhuYOnafhyv9Mzx2A/viewform";
+
 export default function SearchScreen({ onNavigate }: ScreenProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedTerm, setDebouncedTerm] = useState("");
@@ -45,6 +48,10 @@ export default function SearchScreen({ onNavigate }: ScreenProps) {
       return;
     }
     setIsSurveyOpen(true);
+  };
+
+  const openGoogleForm = () => {
+    window.open(GOOGLE_FORM_URL, "_blank", "noopener,noreferrer");
   };
 
   useEffect(() => {
@@ -173,11 +180,41 @@ export default function SearchScreen({ onNavigate }: ScreenProps) {
           </div>
         )}
 
+        {/* 구글폼 설문하기 배너 — 기존 설문 완료 여부와 무관하게 항상 노출 */}
+        <div className="px-screen pt-2">
+          <button
+            onClick={openGoogleForm}
+            className="w-full flex items-center justify-between px-4 py-3 bg-indigo-50 border border-indigo-200 rounded-2xl text-left active:scale-[0.99] transition-all"
+          >
+            <div>
+              <p className="text-[12px] font-extrabold text-indigo-700">
+                청년패스 이용 설문에 참여해주세요
+              </p>
+              <p className="text-[10px] text-indigo-500 font-semibold mt-0.5">
+                서비스 개선을 위한 의견을 들려주세요
+              </p>
+            </div>
+            <svg
+              className="w-4 h-4 text-indigo-500 shrink-0"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2.5"
+                d="M9 5l7 7-7 7"
+              />
+            </svg>
+          </button>
+        </div>
+
         {/* Recent Searches — 항상 이 자리를 차지해서 아래 콘텐츠가 밀리지 않음. 검색창은 이 위에 오버레이 */}
         {(recentSearches.length > 0 || isSearchOpen) && (
           <div className="relative min-h-15.5 shrink-0">
             {recentSearches.length > 0 && (
-              <div className="px-screen pt-2">
+              <div className="px-screen pt-5">
                 <div className="flex items-center justify-between mb-3">
                   <span className="text-xs font-bold text-slate-800">
                     최근 검색
