@@ -9,6 +9,7 @@ import ComingSoonModal from "@/app/components/ui/ComingSoonModal";
 import OpenInBrowserModal from "@/app/components/ui/OpenInBrowserModal";
 import { useUiStore } from "@/lib/store/uiStore";
 import { attemptAutoExitOnEntry } from "@/lib/inAppBrowser";
+import { usePullToRefresh } from "@/lib/usePullToRefresh";
 
 interface Props {
   children: React.ReactNode;
@@ -31,6 +32,8 @@ export default function MobileLayout({ children }: Props) {
     bumpSearchVisit,
   } = useUiStore();
   const prevPathnameRef = useRef(pathname);
+  const contentRef = useRef<HTMLDivElement>(null);
+  usePullToRefresh(contentRef);
 
   // 사이트 진입(최초 마운트) 시점에 인앱 브라우저 여부를 감지해 외부 브라우저 전환을 시도한다.
   // 로그인 버튼을 누르기 전이라도 카카오톡/Android는 곧바로 Chrome/Safari로 넘어가고,
@@ -125,7 +128,7 @@ export default function MobileLayout({ children }: Props) {
           />
         )}
 
-        <div className="flex-1 min-h-0 overflow-hidden relative">
+        <div ref={contentRef} className="flex-1 min-h-0 overflow-hidden relative">
           {children}
         </div>
 
