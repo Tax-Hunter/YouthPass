@@ -6,6 +6,7 @@ import PromoBanner from "@/app/components/ui/PromoBanner";
 import { useLogout } from "@/lib/useLogout";
 import { useAuthStore } from "@/lib/store/authStore";
 import { useUiStore } from "@/lib/store/uiStore";
+import { startGoogleLogin } from "@/lib/inAppBrowser";
 
 interface ScreenProps {
   onNavigate?: (screenId: string) => void;
@@ -14,7 +15,7 @@ interface ScreenProps {
 
 export default function ProfileScreen({ onNavigate, onClose }: ScreenProps) {
   const { user, isLoading } = useAuthStore();
-  const { openLoginModal, openSupportModal } = useUiStore();
+  const { openLoginModal, openSupportModal, showOpenInBrowserModal } = useUiStore();
   const router = useRouter();
   const { logout, isLoggingOut } = useLogout({
     onSuccess: () => {
@@ -38,9 +39,7 @@ export default function ProfileScreen({ onNavigate, onClose }: ScreenProps) {
           <div className="flex flex-col gap-3">
             <p className="text-xs text-slate-400 font-medium text-center">안전하고 간편하게 로그인하세요</p>
             <button
-              onClick={() => {
-                window.location.href = `${process.env.NEXT_PUBLIC_API_URL}/auth/get/google-login?redirect_origin=${encodeURIComponent(window.location.origin)}`;
-              }}
+              onClick={() => startGoogleLogin(showOpenInBrowserModal)}
               className="w-full flex items-center justify-center gap-3 py-3.5 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl text-[13px] font-bold shadow-md shadow-blue-600/20 active:scale-[0.98] transition-all"
             >
               <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24">

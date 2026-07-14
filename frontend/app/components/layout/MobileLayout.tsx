@@ -6,6 +6,7 @@ import Header from "./Header";
 import ProfileScreen from "@/app/features/auth/ProfileScreen";
 import LoginPromptModal from "@/app/components/ui/LoginPromptModal";
 import ComingSoonModal from "@/app/components/ui/ComingSoonModal";
+import OpenInBrowserModal from "@/app/components/ui/OpenInBrowserModal";
 import { useUiStore } from "@/lib/store/uiStore";
 
 interface Props {
@@ -17,7 +18,16 @@ export default function MobileLayout({ children }: Props) {
   const router = useRouter();
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isHeaderScrolled, setIsHeaderScrolled] = useState(false);
-  const { loginModalOpen, closeLoginModal, supportModalOpen, closeSupportModal, closeSearchInput, bumpSearchVisit } = useUiStore();
+  const {
+    loginModalOpen,
+    closeLoginModal,
+    supportModalOpen,
+    closeSupportModal,
+    openInBrowserModalOpen,
+    closeOpenInBrowserModal,
+    closeSearchInput,
+    bumpSearchVisit,
+  } = useUiStore();
   const prevPathnameRef = useRef(pathname);
 
   useEffect(() => {
@@ -115,6 +125,11 @@ export default function MobileLayout({ children }: Props) {
         {/* Coming Soon Modal — rendered at phone-frame level (z-[60], above drawer z-50) */}
         {supportModalOpen && (
           <ComingSoonModal onClose={closeSupportModal} />
+        )}
+
+        {/* Open In Browser Modal (인앱 브라우저 감지 시 안내) — rendered at phone-frame level (z-[60], above drawer z-50) */}
+        {openInBrowserModalOpen && (
+          <OpenInBrowserModal onClose={closeOpenInBrowserModal} />
         )}
 
         {/* Profile Menu Popup Drawer inside the phone frame (routing-free) */}
