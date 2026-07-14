@@ -3,6 +3,9 @@
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useBookmarkStore } from "@/lib/store/bookmarkStore";
+import { useAuthStore } from "@/lib/store/authStore";
+import { useUiStore } from "@/lib/store/uiStore";
+import { useFilterStore, DEFAULT_FILTERS } from "@/lib/store/filterStore";
 import { usePolicyList, sortPoliciesByDeadline } from "@/lib/api/policy";
 import PolicyCard from "@/app/components/ui/PolicyCard";
 import PromoBanner from "@/app/components/ui/PromoBanner";
@@ -15,7 +18,18 @@ interface ScreenProps {
 export default function HomeScreen({ onNavigate }: ScreenProps) {
   const router = useRouter();
   const { toggle: toggleBookmark, isBookmarked } = useBookmarkStore();
+  const { user } = useAuthStore();
+  const { openLoginModal } = useUiStore();
+  const { saveFilters } = useFilterStore();
   const [isSurveyOpen, setIsSurveyOpen] = useState(false);
+
+  const openSurvey = () => {
+    if (!user) {
+      openLoginModal();
+      return;
+    }
+    setIsSurveyOpen(true);
+  };
 
   const { data, error, isLoading } = usePolicyList({ sort: "deadline", size: 4, applicable: true });
   const sortedItems = data?.items ? sortPoliciesByDeadline(data.items) : [];
@@ -25,10 +39,10 @@ export default function HomeScreen({ onNavigate }: ScreenProps) {
   };
 
   return (
-    <div className="flex flex-col h-full bg-slate-50 text-slate-800 font-sans select-none relative pt-header overflow-hidden">
-      <div className="flex-1 overflow-y-auto">
+    <div className="flex flex-col h-full bg-slate-50 text-slate-800 font-sans select-none relative overflow-hidden">
+      <div className="flex-1 min-h-0 overflow-y-auto pt-header scroll-stable">
       {/* Blue Hero Banner */}
-      <div className="bg-blue-600 text-white px-6 pt-9 pb-8 flex flex-col items-start gap-4 shrink-0 shadow-inner relative overflow-hidden">
+      <div className="bg-blue-600 text-white px-screen pt-9 pb-8 flex flex-col items-start gap-4 shrink-0 shadow-inner relative overflow-hidden">
         <div className="absolute -top-12.5 -right-12.5 w-40 h-40 bg-white/10 rounded-full blur-2xl" />
         <div className="absolute -bottom-7.5 -left-5 w-28 h-28 bg-blue-500 rounded-full blur-xl" />
 
@@ -46,7 +60,7 @@ export default function HomeScreen({ onNavigate }: ScreenProps) {
         </div>
 
         <button
-          onClick={() => setIsSurveyOpen(true)}
+          onClick={openSurvey}
           className="relative z-10 px-5 py-2.5 bg-white text-blue-600 hover:bg-blue-50 text-[13px] font-bold rounded-xl shadow-md transition-all active:scale-[0.98]"
         >
           맞춤 정책 찾기
@@ -54,7 +68,7 @@ export default function HomeScreen({ onNavigate }: ScreenProps) {
       </div>
 
       {/* Category Grid Section */}
-      <section className="px-6 py-6 bg-white shrink-0 grid grid-cols-4 gap-3 border-b border-slate-100">
+      <section className="px-screen py-6 bg-white shrink-0 grid grid-cols-4 gap-3 border-b border-slate-100">
         {[
           { label: "주거", icon: "home", color: "bg-blue-50 text-blue-600" },
           { label: "금융", icon: "cash", color: "bg-teal-50 text-teal-600" },
@@ -63,8 +77,14 @@ export default function HomeScreen({ onNavigate }: ScreenProps) {
         ].map((cat) => (
           <button
             key={cat.label}
-            onClick={() => onNavigate?.("list")}
-            onMouseEnter={() => router.prefetch("/list")}
+            onClick={() => {
+              saveFilters({
+                ...DEFAULT_FILTERS,
+                categories: { ...DEFAULT_FILTERS.categories, [cat.label]: true },
+              });
+              onNavigate?.("search");
+            }}
+            onMouseEnter={() => router.prefetch("/search")}
             className="flex flex-col items-center gap-2 p-1.5 rounded-xl hover:bg-slate-50 transition-colors active:scale-95"
           >
             <div className={`w-12 h-12 rounded-2xl ${cat.color} flex items-center justify-center`}>
@@ -96,12 +116,12 @@ export default function HomeScreen({ onNavigate }: ScreenProps) {
       </section>
 
       {/* Policy List Section */}
-      <section className="px-6 py-6 flex-1">
+      <section className="px-screen py-6 flex-1">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-base font-bold text-slate-900">마감 임박 정책</h3>
           <button
-            onClick={() => onNavigate?.("list")}
-            onMouseEnter={() => router.prefetch("/list")}
+            onClick={() => onNavigate?.("search")}
+            onMouseEnter={() => router.prefetch("/search")}
             className="text-[11px] font-bold text-blue-600 hover:underline flex items-center gap-0.5"
           >
             전체보기
@@ -134,7 +154,7 @@ export default function HomeScreen({ onNavigate }: ScreenProps) {
               <PolicyCard
                 key={policy.plcy_no}
                 policy={policy}
-                isBookmarked={isBookmarked(policy.plcy_no)}
+                isBookmarked={!!user && isBookmarked(policy.plcy_no)}
                 onToggleBookmark={() => toggleBookmark(policy.plcy_no)}
                 onClick={() => handleCardClick(policy.plcy_no)}
                 showCategory={true}
@@ -142,6 +162,7 @@ export default function HomeScreen({ onNavigate }: ScreenProps) {
                 showActionText={false}
                 showDday={true}
                 showSummary={true}
+                showBookmark={!!user}
               />
             ))
           )}
@@ -189,7 +210,7 @@ export default function HomeScreen({ onNavigate }: ScreenProps) {
         <div className="absolute inset-0 z-50 bg-white">
           <SurveyScreen onNavigate={(screenId) => {
             setIsSurveyOpen(false);
-            if (screenId === "list") onNavigate?.("list");
+            if (screenId === "search") onNavigate?.("search");
           }} />
         </div>
       )}

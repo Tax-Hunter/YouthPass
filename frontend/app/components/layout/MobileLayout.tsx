@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, Suspense, useEffect } from "react";
+import React, { useState, Suspense, useEffect, useRef } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Header from "./Header";
 import ProfileScreen from "@/app/features/auth/ProfileScreen";
@@ -16,7 +16,19 @@ export default function MobileLayout({ children }: Props) {
   const pathname = usePathname();
   const router = useRouter();
   const [isProfileOpen, setIsProfileOpen] = useState(false);
-  const { loginModalOpen, closeLoginModal, supportModalOpen, closeSupportModal } = useUiStore();
+  const [isHeaderScrolled, setIsHeaderScrolled] = useState(false);
+  const { loginModalOpen, closeLoginModal, supportModalOpen, closeSupportModal, closeSearchInput, bumpSearchVisit } = useUiStore();
+  const prevPathnameRef = useRef(pathname);
+
+  useEffect(() => {
+    if (pathname !== "/search") {
+      closeSearchInput();
+    } else if (prevPathnameRef.current !== "/search") {
+      // 다른 화면에서 /search로 (재)진입한 시점 — 검색 화면을 항상 초기 상태로 리마운트
+      bumpSearchVisit();
+    }
+    prevPathnameRef.current = pathname;
+  }, [pathname, closeSearchInput, bumpSearchVisit]);
 
   // Prefetch other static pages for smoother transitions
   useEffect(() => {
@@ -70,8 +82,25 @@ export default function MobileLayout({ children }: Props) {
               currentScreen={currentScreen}
               onProfileClick={() => setIsProfileOpen(true)}
               pathname={pathname}
+              onScrolledChange={setIsHeaderScrolled}
             />
           </Suspense>
+        )}
+
+        {/* 헤더 바로 아래에서 스크롤 콘텐츠가 딱 잘려 보이는 걸 부드럽게 가려주는 블러 페이드
+            — 헤더가 스크롤로 줄어든 상태(isHeaderScrolled)일 때만 노출.
+            헤더가 줄어드는 높이(top-header-min)를 기준으로 잡고, 줄어들기 전 남는 차이만큼
+            높이를 더 줘서 헤더 뒤에 가려지게 함 (shrink 애니메이션 중에도 안 밀리게) */}
+        {showHeader && (
+          <div
+            className={`absolute inset-x-0 top-header-min z-20 h-12 pointer-events-none backdrop-blur-md transition-opacity duration-100 ${
+              isHeaderScrolled ? "opacity-100" : "opacity-0"
+            }`}
+            style={{
+              maskImage: "linear-gradient(to bottom, black, transparent)",
+              WebkitMaskImage: "linear-gradient(to bottom, black, transparent)",
+            }}
+          />
         )}
 
         <div className="flex-1 min-h-0 overflow-hidden relative">

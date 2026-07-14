@@ -1,11 +1,14 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useBookmarkStore } from "@/lib/store/bookmarkStore";
+import { useAuthStore } from "@/lib/store/authStore";
 import { usePolicyDetail } from "@/lib/api/policy";
 import type { PolicyCardData } from "@/lib/api/policy";
+import { createShareUrl } from "@/lib/api/share";
 import PolicyCard from "@/app/components/ui/PolicyCard";
 import OptionButton from "@/app/components/ui/OptionButton";
+import ShareButton from "@/app/components/ui/ShareButton";
 
 interface ScreenProps {
   onNavigate?: (screenId: string) => void;
@@ -17,14 +20,23 @@ function BookmarkedCard({
   onToggleBookmark,
   onClick,
   activeTag,
+  onInvalid,
+  showBookmark,
 }: {
   plcy_no: string;
   isBookmarked: boolean;
   onToggleBookmark: () => void;
   onClick: () => void;
   activeTag: string;
+  onInvalid: (plcy_no: string) => void;
+  showBookmark: boolean;
 }) {
-  const { policy, isLoading } = usePolicyDetail(plcy_no);
+  const { policy, error, isLoading } = usePolicyDetail(plcy_no);
+
+  // 존재하지 않는 정책(삭제되었거나 레거시 id)은 찜 목록에서 자동으로 제거한다.
+  useEffect(() => {
+    if (error) onInvalid(plcy_no);
+  }, [error, plcy_no, onInvalid]);
 
   if (isLoading) {
     return (
@@ -68,6 +80,7 @@ function BookmarkedCard({
       showCategory={true}
       showLocation={true}
       showActionText={false}
+      showBookmark={showBookmark}
     />
   );
 }
@@ -78,8 +91,21 @@ export default function BookmarkedScreen({ onNavigate }: ScreenProps) {
     toggle: toggleBookmark,
     isBookmarked,
   } = useBookmarkStore();
+  const { user } = useAuthStore();
   const [activeTag, setActiveTag] = useState("전체");
-  const [copied, setCopied] = useState(false);
+  // 동일한 찜 목록으로 재클릭 시 서버 요청 없이 캐시된 URL을 재사용 — 백엔드 중복 방지 로직과
+  // 무관하게 클라이언트 단에서도 불필요한 공유 링크 생성 요청을 막는 이중 안전장치
+  const [shareCache, setShareCache] = useState<{ key: string; url: string } | null>(null);
+  const bookmarksKey = [...bookmarks].sort().join(",");
+
+  const getShareUrl = async () => {
+    if (shareCache && shareCache.key === bookmarksKey) {
+      return shareCache.url;
+    }
+    const url = await createShareUrl(bookmarks);
+    setShareCache({ key: bookmarksKey, url });
+    return url;
+  };
 
   const tags = ["전체", "#주거", "#금융", "#일자리", "#교육"];
 
@@ -87,76 +113,23 @@ export default function BookmarkedScreen({ onNavigate }: ScreenProps) {
     onNavigate?.(`detail?id=${plcy_no}`);
   };
 
-  const handleShare = async () => {
-    const url = window.location.href;
-    try {
-      await navigator.clipboard.writeText(url);
-    } catch {
-      const el = document.createElement("textarea");
-      el.value = url;
-      el.style.position = "fixed";
-      el.style.opacity = "0";
-      document.body.appendChild(el);
-      el.select();
-      document.execCommand("copy");
-      document.body.removeChild(el);
-    }
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1500);
-  };
-
   return (
-    <div className="flex flex-col h-full bg-white text-slate-800 font-sans select-none overflow-y-auto pt-header">
+    <div className="flex flex-col h-full bg-white text-slate-800 font-sans select-none overflow-y-auto scroll-stable pt-header">
       {/* Title & Share */}
-      <div className="px-6 pt-5 pb-3 flex items-center justify-between shrink-0">
+      <div className="px-screen pt-5 pb-3 flex items-center justify-between shrink-0">
         <h2 className="text-xl font-bold text-slate-900 flex items-center gap-1.5">
           찜한 정책
           <span className="text-blue-600 font-mono">{bookmarks.length}</span>
         </h2>
-        <button
-          onClick={handleShare}
-          className={`text-xs font-bold flex items-center gap-1 transition-colors ${copied ? "text-emerald-500" : "text-blue-600 hover:underline"}`}
-        >
-          {copied ? (
-            <>
-              <svg
-                className="w-3.5 h-3.5"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2.5"
-                  d="M5 13l4 4L19 7"
-                />
-              </svg>
-              복사됨
-            </>
-          ) : (
-            <>
-              <svg
-                className="w-3.5 h-3.5"
-                fill="none"
-                strokeWidth="1.5"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M7.217 10.907a2.25 2.25 0 1 0 0 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186 9.566-5.314m-9.566 7.5 9.566 5.314m0 0a2.25 2.25 0 1 0 3.935 2.186 2.25 2.25 0 0 0-3.935-2.186Zm0-12.814a2.25 2.25 0 1 0 3.933-2.185 2.25 2.25 0 0 0-3.933 2.185Z"
-                />
-              </svg>
-              공유
-            </>
-          )}
-        </button>
+        <ShareButton
+          className="text-xs font-bold"
+          disabled={bookmarks.length === 0}
+          getUrl={getShareUrl}
+        />
       </div>
 
       {/* Filter Hashtags */}
-      <div className="px-6 py-2.5 flex gap-2 overflow-x-auto shrink-0 scrollbar-none">
+      <div className="px-screen py-2.5 flex flex-wrap gap-2 shrink-0">
         {tags.map((tag) => (
           <OptionButton
             key={tag}
@@ -171,7 +144,7 @@ export default function BookmarkedScreen({ onNavigate }: ScreenProps) {
       <div className="border-t border-slate-50" />
 
       {/* Cards */}
-      <div className="flex-1 px-6 py-5 space-y-4">
+      <div className="flex-1 px-screen py-5 space-y-4">
         {bookmarks.length === 0 ? (
           <div className="text-center py-16 flex flex-col items-center gap-2">
             <svg
@@ -196,10 +169,12 @@ export default function BookmarkedScreen({ onNavigate }: ScreenProps) {
             <BookmarkedCard
               key={plcy_no}
               plcy_no={plcy_no}
-              isBookmarked={isBookmarked(plcy_no)}
+              isBookmarked={!!user && isBookmarked(plcy_no)}
               onToggleBookmark={() => toggleBookmark(plcy_no)}
               onClick={() => handleCardClick(plcy_no)}
               activeTag={activeTag}
+              onInvalid={toggleBookmark}
+              showBookmark={!!user}
             />
           ))
         )}

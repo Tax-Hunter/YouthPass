@@ -17,7 +17,10 @@ export default function ProfileScreen({ onNavigate, onClose }: ScreenProps) {
   const { openLoginModal, openSupportModal } = useUiStore();
   const router = useRouter();
   const { logout, isLoggingOut } = useLogout({
-    onSuccess: () => onClose?.(),
+    onSuccess: () => {
+      onClose?.();
+      router.replace("/home");
+    },
   });
 
   const displayName = isLoading
@@ -87,7 +90,7 @@ export default function ProfileScreen({ onNavigate, onClose }: ScreenProps) {
       </div>
 
       {/* Scrollable Menu Sections */}
-      <div className="flex-1 overflow-y-auto px-6 py-5 space-y-6 flex flex-col">
+      <div className="flex-1 overflow-y-auto scroll-stable px-6 py-5 space-y-6 flex flex-col">
 
         {/* Section 1: 메뉴 */}
         <div className="space-y-2.5">
@@ -95,7 +98,7 @@ export default function ProfileScreen({ onNavigate, onClose }: ScreenProps) {
           <div className="space-y-1">
             {[
               { id: "home", label: "홈", icon: "home", color: "bg-blue-50 text-blue-600", requireAuth: false },
-              { id: "list", label: "정책 목록", icon: "list", color: "bg-slate-100 text-slate-600", requireAuth: false },
+              { id: "search", label: "정책 목록", icon: "list", color: "bg-slate-100 text-slate-600", requireAuth: false },
               { id: "mypage", label: "마이페이지", icon: "user", color: "bg-slate-100 text-slate-600", requireAuth: true },
             ].filter((item) => !item.requireAuth || !!user).map((item) => (
               <button
@@ -212,7 +215,7 @@ export default function ProfileScreen({ onNavigate, onClose }: ScreenProps) {
             </svg>
             {isLoggingOut ? "로그아웃 중..." : "로그아웃"}
           </button>
-          <span className="text-[10px] text-slate-400 font-bold font-mono">Youth Policy Portal v1.2.0</span>
+          <span className="text-[10px] text-slate-400 font-bold font-mono">Youth Policy Portal v1.0.0</span>
         </div>
       )}
 

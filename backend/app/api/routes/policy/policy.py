@@ -1,4 +1,5 @@
 import hashlib
+import secrets
 import logging
 from datetime import date, datetime, timedelta, timezone
 from typing import List, Optional, Tuple
@@ -9,8 +10,15 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.db.session import get_db
-from app.db.models import Policy, PolicyStats, Code
-from app.schemas.policy import Eligibility, PolicyCard, PolicyDetail, PolicyListResponse
+from app.db.models import Policy, PolicyStats, Code, BookmarkShare
+from app.schemas.policy import (
+    Eligibility,
+    PolicyCard,
+    PolicyDetail,
+    PolicyListResponse,
+    ShareCreateRequest,
+    ShareCreateResponse,
+)
 from app.api.routes.policy.cache import policy_cache_get, policy_cache_set
 from app.api.routes.policy.constants import (
     APLY_PRD_CLOSED,
@@ -18,6 +26,7 @@ from app.api.routes.policy.constants import (
     CODE_FILTERS,
     RAW_PLACEHOLDERS,
     REQ_NOLIMIT,
+    SHARE_LINK_EXPIRY_DAYS,
     SIDO_LABELS,
 )
 from app.core.es import get_es
@@ -567,3 +576,95 @@ def get_policy(policy_id: str, db: Session = Depends(get_db)):
     # 404는 캐시하지 않음(위에서 조기 반환) — 존재 정책의 성공 응답만 저장
     policy_cache_set("detail", policy_id, resp.model_dump_json())
     return resp
+
+
+def _dedupe_preserve_order(values: List[str]) -> List[str]:
+    seen = set()
+    out = []
+    for v in values:
+        if v not in seen:
+            seen.add(v)
+            out.append(v)
+    return out
+
+
+def _generate_share_code(db: Session, attempts: int = 5) -> str:
+    # 12자 URL-safe 코드. 충돌(희박) 시 재생성.
+    for _ in range(attempts):
+        code = secrets.token_urlsafe(9)[:12]
+        exists = db.query(BookmarkShare.id).filter(BookmarkShare.share_code == code).first()
+        if not exists:
+            return code
+    raise HTTPException(status_code=500, detail="failed to generate share code")
+
+
+@router.post("/post/share", response_model=ShareCreateResponse)
+def create_bookmark_share(body: ShareCreateRequest, db: Session = Depends(get_db)):
+    # 로그인 여부 무관 — 클라이언트가 들고 있는 plcy_no 스냅샷을 그대로 저장
+    requested = _dedupe_preserve_order(body.plcy_nos)
+    existing = {
+        row[0]
+        for row in db.query(Policy.plcy_no).filter(Policy.plcy_no.in_(requested)).all()
+    }
+    plcy_nos = [p for p in requested if p in existing]
+    if not plcy_nos:
+        raise HTTPException(status_code=400, detail="no valid policies to share")
+
+    now = datetime.now(timezone.utc)
+
+    # 동일한 찜 목록(구성 무관, 순서 무관)에 대해 아직 만료되지 않은 공유 링크가 있으면 재사용 —
+    # 매 클릭마다 새 URL이 생기지 않도록 함. 배열 순서 그대로 비교(==)하면 찜 해제/재추가로
+    # 순서만 바뀌어도 다른 스냅샷으로 오판되므로, 정렬된 값으로 비교한다.
+    sorted_key = sorted(plcy_nos)
+    same_length_candidates = (
+        db.query(BookmarkShare)
+        .filter(func.array_length(BookmarkShare.plcy_nos, 1) == len(plcy_nos))
+        .filter(or_(BookmarkShare.expires_at.is_(None), BookmarkShare.expires_at > now))
+        .order_by(BookmarkShare.created_at.desc())
+        .all()
+    )
+    existing_share = next(
+        (row for row in same_length_candidates if sorted(row.plcy_nos) == sorted_key),
+        None,
+    )
+    if existing_share is not None:
+        return ShareCreateResponse(
+            share_code=existing_share.share_code, expires_at=existing_share.expires_at
+        )
+
+    share = BookmarkShare(
+        share_code=_generate_share_code(db),
+        plcy_nos=plcy_nos,
+        created_at=now,
+        expires_at=now + timedelta(days=SHARE_LINK_EXPIRY_DAYS),
+    )
+    db.add(share)
+    db.commit()
+    db.refresh(share)
+    return ShareCreateResponse(share_code=share.share_code, expires_at=share.expires_at)
+
+
+@router.get("/get/share/{share_code}", response_model=PolicyListResponse)
+def get_bookmark_share(share_code: str, db: Session = Depends(get_db)):
+    share = (
+        db.query(BookmarkShare)
+        .filter(BookmarkShare.share_code == share_code)
+        .first()
+    )
+    if share is None:
+        raise HTTPException(status_code=404, detail="share not found")
+    if share.expires_at is not None and share.expires_at < datetime.now(timezone.utc):
+        raise HTTPException(status_code=404, detail="share expired")
+
+    rows = (
+        db.query(Policy, PolicyStats.inq_cnt)
+        .outerjoin(PolicyStats, PolicyStats.plcy_no == Policy.plcy_no)
+        .filter(Policy.plcy_no.in_(share.plcy_nos), Policy.is_active.is_(True))
+        .all()
+    )
+    # 스냅샷 순서 보존 — 비활성화/삭제된 정책은 자연히 제외됨
+    by_no = {p.plcy_no: (p, inq_cnt) for p, inq_cnt in rows}
+    ordered = [by_no[no] for no in share.plcy_nos if no in by_no]
+
+    items = [_to_card(p, inq_cnt) for p, inq_cnt in ordered]
+    return PolicyListResponse(total=len(items), page=1, size=len(items) or 1, items=items)

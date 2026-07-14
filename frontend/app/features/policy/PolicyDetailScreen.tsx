@@ -3,6 +3,7 @@
 import React from "react";
 import { useSearchParams } from "next/navigation";
 import { useBookmarkStore } from "@/lib/store/bookmarkStore";
+import { useAuthStore } from "@/lib/store/authStore";
 import { useFilterStore } from "@/lib/store/filterStore";
 import { usePolicyDetail } from "@/lib/api/policy";
 import Badge from "@/app/components/ui/Badge";
@@ -37,12 +38,13 @@ function Section({ title, icon, accent = "blue", children }: {
 
 export default function PolicyDetailScreen({ onNavigate }: ScreenProps) {
   const { toggle: toggleBookmark, isBookmarked } = useBookmarkStore();
+  const { user } = useAuthStore();
   const { filters } = useFilterStore();
   const searchParams = useSearchParams();
   const policyId = searchParams.get("id");
   const { policy, isLoading, error } = usePolicyDetail(policyId);
 
-  const isFav = policy ? isBookmarked(policy.plcy_no) : false;
+  const isFav = !!user && policy ? isBookmarked(policy.plcy_no) : false;
   const hasLink = !!policy?.aply_url_addr;
   const isClosed = policy?.dday === "마감";
 
@@ -86,7 +88,7 @@ export default function PolicyDetailScreen({ onNavigate }: ScreenProps) {
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
         </svg>
         <p className="text-sm font-bold text-slate-400 text-center">정책 정보를 불러올 수 없습니다.</p>
-        <button onClick={() => onNavigate?.("list")} className="text-xs text-blue-600 font-semibold underline">
+        <button onClick={() => onNavigate?.("search")} className="text-xs text-blue-600 font-semibold underline">
           목록으로 돌아가기
         </button>
       </div>
@@ -97,31 +99,31 @@ export default function PolicyDetailScreen({ onNavigate }: ScreenProps) {
     <div className="h-full bg-white font-sans select-none flex flex-col">
 
       {/* ── Content (scrollable) ── */}
-      <div className="flex-1 min-h-0 overflow-y-auto pt-header">
+      <div className="flex-1 min-h-0 overflow-y-auto scroll-stable pt-header">
 
         {/* ── Title block ── */}
-        <div className="px-5 pt-5 pb-4 border-b border-slate-100">
-          <div className="flex items-center justify-end mb-3">
+        <div className="px-screen pt-5 pb-4 border-b border-slate-100">
+          <div className="flex items-start justify-between gap-3">
+            {isLoading ? (
+              <div className="space-y-2 animate-pulse flex-1">
+                <div className="h-5 bg-slate-200 rounded w-11/12" />
+                <div className="h-5 bg-slate-200 rounded w-7/12" />
+              </div>
+            ) : (
+              <h1 className="text-[18px] font-extrabold text-slate-900 leading-snug tracking-tight">
+                {policy?.plcy_nm}
+              </h1>
+            )}
+
             {isLoading
-              ? <div className="h-6 w-12 bg-slate-200 rounded-md animate-pulse" />
-              : <Badge variant={dDayVariant()} size="md">{policy?.dday ?? "-"}</Badge>
+              ? <div className="h-6 w-12 shrink-0 bg-slate-200 rounded-md animate-pulse" />
+              : <Badge className="shrink-0" variant={dDayVariant()} size="md">{policy?.dday ?? "-"}</Badge>
             }
           </div>
-
-          {isLoading ? (
-            <div className="space-y-2 animate-pulse">
-              <div className="h-5 bg-slate-200 rounded w-11/12" />
-              <div className="h-5 bg-slate-200 rounded w-7/12" />
-            </div>
-          ) : (
-            <h1 className="text-[18px] font-extrabold text-slate-900 leading-snug tracking-tight">
-              {policy?.plcy_nm}
-            </h1>
-          )}
         </div>
 
         {/* ── Meta row ── */}
-        <div className="px-5 py-4 border-b border-slate-100 space-y-3">
+        <div className="px-screen py-4 border-b border-slate-100 space-y-3">
 
           {isLoading ? (
             <div className="flex gap-2 animate-pulse">
@@ -207,7 +209,7 @@ export default function PolicyDetailScreen({ onNavigate }: ScreenProps) {
         </div>
 
         {/* ── 지원 대상 + 혜택 내용 ── */}
-        <div className="px-5 py-5 space-y-3">
+        <div className="px-screen py-5 space-y-3">
           <Section
             title="지원 대상"
             accent="blue"
@@ -258,20 +260,22 @@ export default function PolicyDetailScreen({ onNavigate }: ScreenProps) {
       </div>
 
       {/* ── Bottom action bar (always pinned to screen bottom) ── */}
-      <div className="shrink-0 px-5 pt-4 border-t border-slate-100 bg-white flex items-center gap-3 pb-safe z-10">
-        <button
-          onClick={() => policy && toggleBookmark(policy.plcy_no)}
-          disabled={isLoading || !policy}
-          className={`w-14 h-14 shrink-0 rounded-2xl border-2 flex items-center justify-center transition-all active:scale-90 disabled:opacity-40 disabled:cursor-not-allowed ${
-            isFav
-              ? "bg-rose-50 border-rose-200 text-rose-500"
-              : "bg-white border-slate-200 text-slate-400 hover:border-rose-200 hover:text-rose-400"
-          }`}
-        >
-          <svg className={`w-6 h-6 ${isFav ? "fill-current" : "fill-none"}`} stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-          </svg>
-        </button>
+      <div className="shrink-0 px-screen pt-4 border-t border-slate-100 bg-white flex items-center gap-3 pb-safe z-10">
+        {!!user && (
+          <button
+            onClick={() => policy && toggleBookmark(policy.plcy_no)}
+            disabled={isLoading || !policy}
+            className={`w-14 h-14 shrink-0 rounded-2xl border-2 flex items-center justify-center transition-all active:scale-90 disabled:opacity-40 disabled:cursor-not-allowed ${
+              isFav
+                ? "bg-rose-50 border-rose-200 text-rose-500"
+                : "bg-white border-slate-200 text-slate-400 hover:border-rose-200 hover:text-rose-400"
+            }`}
+          >
+            <svg className={`w-6 h-6 ${isFav ? "fill-current" : "fill-none"}`} stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+            </svg>
+          </button>
+        )}
 
         <button
           onClick={() => {

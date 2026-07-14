@@ -15,6 +15,7 @@ interface PolicyCardProps {
   showActionText?: boolean;
   showDday?: boolean;
   showSummary?: boolean;
+  showBookmark?: boolean;
 }
 
 export default function PolicyCard({
@@ -27,6 +28,7 @@ export default function PolicyCard({
   showActionText = false,
   showDday = true,
   showSummary = true,
+  showBookmark = true,
 }: PolicyCardProps) {
   const isDdayClosed = policy.dday === "마감";
   const isDdayUrgent = policy.dday.startsWith("D-");
@@ -54,21 +56,23 @@ export default function PolicyCard({
                 {policy.dday}
               </Badge>
             )}
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onToggleBookmark();
-              }}
-              className={`p-1.5 rounded-full border transition-colors ${
-                isBookmarked
-                  ? "bg-rose-50 border-rose-100 text-rose-500"
-                  : "bg-slate-50 border-slate-100 text-slate-400 hover:text-rose-500"
-              }`}
-            >
-              <svg className={`w-4 h-4 ${isBookmarked ? "fill-current" : "fill-none"}`} stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-              </svg>
-            </button>
+            {showBookmark && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onToggleBookmark();
+                }}
+                className={`p-1.5 rounded-full border transition-colors ${
+                  isBookmarked
+                    ? "bg-rose-50 border-rose-100 text-rose-500"
+                    : "bg-slate-50 border-slate-100 text-slate-400 hover:text-rose-500"
+                }`}
+              >
+                <svg className={`w-4 h-4 ${isBookmarked ? "fill-current" : "fill-none"}`} stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                </svg>
+              </button>
+            )}
           </div>
         </div>
 
