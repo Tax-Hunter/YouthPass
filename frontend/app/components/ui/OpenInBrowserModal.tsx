@@ -49,8 +49,8 @@ export default function OpenInBrowserModal({ onClose }: OpenInBrowserModalProps)
           </h3>
           <p className="text-xs text-slate-400 font-medium leading-relaxed">
             카카오톡, 인스타그램 등 앱 내 브라우저에서는<br />
-            Google 보안 정책으로 로그인할 수 없어요.<br />
-            Chrome, Safari 등에서 다시 열어주세요.
+            일부 기능(Google 로그인 등)이 제한될 수 있어요.<br />
+            Chrome, Safari 등에서 열어주세요.
           </p>
         </div>
 

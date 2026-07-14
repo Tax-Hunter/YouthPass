@@ -77,3 +77,39 @@ export function tryAutoExitInAppBrowser(targetUrl: string = typeof window !== "u
   }
   return false;
 }
+
+const AUTO_EXIT_ATTEMPTED_KEY = "youthpass_auto_redirect_attempted";
+
+/** 이번 탭 세션에서 진입 시점 자동 전환을 이미 시도했는지 여부 (새로고침/재방문마다 반복 시도되는 것을 방지) */
+function hasAttemptedAutoExitOnEntry(): boolean {
+  if (typeof window === "undefined") return true;
+  try {
+    return window.sessionStorage.getItem(AUTO_EXIT_ATTEMPTED_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function markAutoExitAttemptedOnEntry(): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.sessionStorage.setItem(AUTO_EXIT_ATTEMPTED_KEY, "1");
+  } catch {
+    // sessionStorage 접근 불가(프라이빗 모드 등) — 무시하고 매 진입마다 재시도되도록 둔다
+  }
+}
+
+/**
+ * 사이트 진입(페이지 최초 로드) 시점에 1회만 인앱 브라우저 자동 전환을 시도한다.
+ * 로그인 버튼 클릭(startGoogleLogin)과 달리 세션당 한 번만 동작 — intent URL이 먹히지 않는 환경에서
+ * 새로고침마다 무한히 외부 브라우저 전환을 재시도하는 것을 막기 위함.
+ * @returns "auto" 자동 전환 시도함 / "blocked" 수동 안내(모달) 필요 / "skipped" 인앱 브라우저 아니거나 이미 시도함
+ */
+export function attemptAutoExitOnEntry(): "auto" | "blocked" | "skipped" {
+  if (!isInAppBrowser()) return "skipped";
+  if (hasAttemptedAutoExitOnEntry()) return "skipped";
+
+  markAutoExitAttemptedOnEntry();
+  const autoExited = tryAutoExitInAppBrowser(window.location.href);
+  return autoExited ? "auto" : "blocked";
+}
