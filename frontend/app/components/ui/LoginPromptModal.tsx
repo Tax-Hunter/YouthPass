@@ -1,14 +1,17 @@
 "use client";
 
 import React from "react";
+import { startGoogleLogin } from "@/lib/inAppBrowser";
+import { useUiStore } from "@/lib/store/uiStore";
 
 interface LoginPromptModalProps {
   onClose: () => void;
 }
 
 export default function LoginPromptModal({ onClose }: LoginPromptModalProps) {
+  const { showOpenInBrowserModal } = useUiStore();
   const handleLogin = () => {
-    window.location.href = `${process.env.NEXT_PUBLIC_API_URL}/auth/get/google-login?redirect_origin=${encodeURIComponent(window.location.origin)}`;
+    startGoogleLogin(showOpenInBrowserModal);
   };
 
   return (

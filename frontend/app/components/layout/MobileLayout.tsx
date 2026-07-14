@@ -6,7 +6,9 @@ import Header from "./Header";
 import ProfileScreen from "@/app/features/auth/ProfileScreen";
 import LoginPromptModal from "@/app/components/ui/LoginPromptModal";
 import ComingSoonModal from "@/app/components/ui/ComingSoonModal";
+import OpenInBrowserModal from "@/app/components/ui/OpenInBrowserModal";
 import { useUiStore } from "@/lib/store/uiStore";
+import { attemptAutoExitOnEntry } from "@/lib/inAppBrowser";
 
 interface Props {
   children: React.ReactNode;
@@ -17,8 +19,28 @@ export default function MobileLayout({ children }: Props) {
   const router = useRouter();
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isHeaderScrolled, setIsHeaderScrolled] = useState(false);
-  const { loginModalOpen, closeLoginModal, supportModalOpen, closeSupportModal, closeSearchInput, bumpSearchVisit } = useUiStore();
+  const {
+    loginModalOpen,
+    closeLoginModal,
+    supportModalOpen,
+    closeSupportModal,
+    openInBrowserModalOpen,
+    showOpenInBrowserModal,
+    closeOpenInBrowserModal,
+    closeSearchInput,
+    bumpSearchVisit,
+  } = useUiStore();
   const prevPathnameRef = useRef(pathname);
+
+  // 사이트 진입(최초 마운트) 시점에 인앱 브라우저 여부를 감지해 외부 브라우저 전환을 시도한다.
+  // 로그인 버튼을 누르기 전이라도 카카오톡/Android는 곧바로 Chrome/Safari로 넘어가고,
+  // 자동 전환이 불가능한 환경(iOS + 카카오톡 아닌 인앱 브라우저)은 안내 모달을 띄운다.
+  useEffect(() => {
+    if (attemptAutoExitOnEntry() === "blocked") {
+      showOpenInBrowserModal();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (pathname !== "/search") {
@@ -115,6 +137,11 @@ export default function MobileLayout({ children }: Props) {
         {/* Coming Soon Modal — rendered at phone-frame level (z-[60], above drawer z-50) */}
         {supportModalOpen && (
           <ComingSoonModal onClose={closeSupportModal} />
+        )}
+
+        {/* Open In Browser Modal (인앱 브라우저 감지 시 안내) — rendered at phone-frame level (z-[60], above drawer z-50) */}
+        {openInBrowserModalOpen && (
+          <OpenInBrowserModal onClose={closeOpenInBrowserModal} />
         )}
 
         {/* Profile Menu Popup Drawer inside the phone frame (routing-free) */}
