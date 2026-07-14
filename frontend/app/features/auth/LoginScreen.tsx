@@ -2,6 +2,8 @@
 
 import React from "react";
 import { useRouter } from "next/navigation";
+import { startGoogleLogin } from "@/lib/inAppBrowser";
+import { useUiStore } from "@/lib/store/uiStore";
 
 interface ScreenProps {
   onNavigate?: (screenId: string) => void;
@@ -9,6 +11,7 @@ interface ScreenProps {
 
 export default function LoginScreen({ onNavigate }: ScreenProps) {
   const router = useRouter();
+  const { showOpenInBrowserModal } = useUiStore();
   return (
     <div className="flex flex-col h-full bg-white text-slate-800 font-sans select-none overflow-hidden">
       {/* Main Content Area */}
@@ -17,9 +20,7 @@ export default function LoginScreen({ onNavigate }: ScreenProps) {
         <div className="w-full flex flex-col items-center gap-3 mb-10">
           <span className="text-xs text-slate-400 font-medium">안전하고 간편하게 로그인하세요</span>
           <button
-            onClick={() => {
-              window.location.href = `${process.env.NEXT_PUBLIC_API_URL}/auth/get/google-login?redirect_origin=${encodeURIComponent(window.location.origin)}`;
-            }}
+            onClick={() => startGoogleLogin(showOpenInBrowserModal)}
             className="w-full flex items-center justify-center gap-3 py-3.5 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-semibold shadow-md shadow-blue-600/20 active:scale-[0.98] transition-all cursor-pointer"
           >
             {/* Custom Google "G" icon path */}
