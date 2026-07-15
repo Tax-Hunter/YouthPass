@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import Script from "next/script";
 import "./globals.css";
 import MobileLayout from "@/app/components/layout/MobileLayout";
 import AuthInit from "@/lib/AuthInit";
@@ -66,12 +67,18 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="ko">
+    <html lang="ko" suppressHydrationWarning>
       <body>
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteJsonLd) }}
         />
+        {/* React가 하이드레이션되기 전, 최초 페인트 시점에 동기적으로 실행되어
+            같은 세션에서 이미 스플래시를 본 적이 있으면 즉시 숨긴다.
+            (하이드레이션 지연 동안 스플래시가 잠깐이라도 다시 보이는 것을 방지) */}
+        <Script id="splash-skip-check" strategy="beforeInteractive">
+          {`try{if(sessionStorage.getItem("splash-shown")){document.documentElement.classList.add("splash-skip")}}catch(e){}`}
+        </Script>
         <Providers>
           <AuthInit />
           <MobileLayout>{children}</MobileLayout>
