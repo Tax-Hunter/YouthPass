@@ -33,7 +33,7 @@ export default function MobileLayout({ children }: Props) {
   } = useUiStore();
   const prevPathnameRef = useRef(pathname);
   const contentRef = useRef<HTMLDivElement>(null);
-  usePullToRefresh(contentRef);
+  const { pullDistance, isRefreshing } = usePullToRefresh(contentRef);
 
   // 사이트 진입(최초 마운트) 시점에 인앱 브라우저 여부를 감지해 외부 브라우저 전환을 시도한다.
   // 로그인 버튼을 누르기 전이라도 카카오톡/Android는 곧바로 Chrome/Safari로 넘어가고,
@@ -96,8 +96,8 @@ export default function MobileLayout({ children }: Props) {
   };
 
   return (
-    <div className="min-h-dvh bg-white sm:bg-slate-950 flex items-center justify-center p-0 sm:p-4 font-sans select-none relative overflow-hidden overscroll-none">
-      <div className="w-full sm:w-[375px] h-dvh sm:h-[812px] overflow-hidden shadow-[0_24px_60px_rgba(0,0,0,0.8)] border border-slate-900 sm:border-white/10 relative bg-white flex flex-col overscroll-none">
+    <div className="min-h-dvh bg-white sm:bg-slate-950 flex items-center justify-center p-0 font-sans select-none relative overflow-hidden overscroll-none">
+      <div className="w-full sm:w-[375px] h-dvh overflow-hidden shadow-[0_24px_60px_rgba(0,0,0,0.8)] border border-slate-900 sm:border-white/10 relative bg-white flex flex-col overscroll-none">
         {/* Unified sticky header componentized and used only once */}
         {showHeader && (
           <Suspense fallback={<div className="w-full h-[76px] bg-white border-b border-slate-100 shrink-0" />}>
@@ -128,7 +128,27 @@ export default function MobileLayout({ children }: Props) {
           />
         )}
 
-        <div ref={contentRef} className="flex-1 min-h-0 overflow-hidden relative">
+        {/* 당겨서 새로고침 인디케이터 — Header가 absolute로 떠 있어 콘텐츠는 그 밑으로 흐르므로,
+            헤더 바로 아래(top-header)에 절대 위치로 배치해야 실제로 보인다. pullDistance만큼
+            높이가 늘어나며 그 안에서 스피너가 회전하고, 새로고침이 예약되면(isRefreshing)
+            reload 직전까지 고정 높이로 유지된다. */}
+        {showHeader && (pullDistance > 0 || isRefreshing) && (
+          <div
+            className="absolute inset-x-0 top-header z-10 flex items-center justify-center overflow-hidden pointer-events-none"
+            style={{ height: isRefreshing ? 56 : pullDistance }}
+          >
+            <div className="w-5 h-5 border-2 border-blue-200 border-t-blue-600 rounded-full animate-spin" />
+          </div>
+        )}
+
+        <div
+          ref={contentRef}
+          className="flex-1 min-h-0 overflow-hidden relative"
+          style={{
+            transform: `translateY(${isRefreshing ? 56 : pullDistance}px)`,
+            transition: pullDistance === 0 ? "transform 200ms ease-out" : undefined,
+          }}
+        >
           {children}
         </div>
 
