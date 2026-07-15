@@ -10,6 +10,12 @@ html {
   scrollbar-gutter: stable;
 }
 
+/* 같은 세션에서 이미 스플래시를 본 경우, 하이드레이션 전 최초 페인트부터
+   즉시 숨기기 위한 규칙 (frontend/app/layout.tsx의 인라인 스크립트와 짝) */
+html.splash-skip #app-splash {
+  display: none !important;
+}
+
 body {
   background: var(--background);
   color: var(--foreground);
