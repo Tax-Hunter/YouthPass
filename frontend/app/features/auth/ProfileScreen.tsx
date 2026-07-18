@@ -15,7 +15,7 @@ interface ScreenProps {
 
 export default function ProfileScreen({ onNavigate, onClose }: ScreenProps) {
   const { user, isLoading } = useAuthStore();
-  const { openLoginModal, openSupportModal, showOpenInBrowserModal } = useUiStore();
+  const { openLoginModal, openSupportModal, openNotificationModal, showOpenInBrowserModal } = useUiStore();
   const router = useRouter();
   const { logout, isLoggingOut } = useLogout({
     onSuccess: () => {
@@ -150,6 +150,7 @@ export default function ProfileScreen({ onNavigate, onClose }: ScreenProps) {
                 key={item.id}
                 onClick={() => {
                   if (item.id === "support") openSupportModal();
+                  else if (item.id === "settings") openNotificationModal();
                 }}
                 className="w-full flex items-center justify-between py-3.5 px-2 hover:bg-slate-50 rounded-xl transition-all group"
               >
