@@ -111,6 +111,12 @@ def build_search_body(
         }})
     if applicable:
         # PG: 마감코드 제외 AND (상시 OR 마감일 NULL OR 마감일 >= KST오늘)
+        # PG의 `!= CLOSED`는 SQL 3치 논리로 NULL도 제외하지만 ES의 must_not term은
+        # missing 문서를 통과시킨다 → exists를 함께 걸어 의미론을 PG와 일치시킨다.
+        # (현재 데이터 NULL 0건 — validate에 존재 규칙이 없어 미래 유입 대비 동등성 고정.
+        #  '미상=포함'으로 정책을 바꾼다면 ES exists 제거가 아니라 PG를 OR IS NULL로 —
+        #  양쪽을 반드시 함께 변경하고 test_es_equivalence로 확인할 것)
+        filters.append({"exists": {"field": "aply_prd_se_cd"}})
         filters.append({"bool": {"must_not": {"term": {"aply_prd_se_cd": APLY_PRD_CLOSED}}}})
         filters.append({"bool": {
             "should": [
