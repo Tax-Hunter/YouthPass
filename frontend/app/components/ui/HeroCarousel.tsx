@@ -77,15 +77,46 @@ export default function HeroCarousel({ slides, className = "" }: HeroCarouselPro
     return () => cancelAnimationFrame(frame);
   }, [transitionEnabled]);
 
+  // 탭이 백그라운드로 가면(visibilitychange → hidden) 오토플레이 타이머를 정지시켜, 렌더링이 멈춘
+  // 동안 trackIndex가 transitionend 보정 없이 무한정 누적되는 것을 막는다. 탭 복귀(visible) 시
+  // 타이머를 재시작하고, 혹시라도 유효 범위를 벗어나 있으면 트랜지션 없이 정상 위치로 스냅시킨다.
   useEffect(() => {
     if (!isLoopable) return;
 
-    const timer = setInterval(() => {
-      goToNext();
-    }, AUTO_PLAY_INTERVAL);
+    let timer: ReturnType<typeof setInterval> | null = null;
 
-    return () => clearInterval(timer);
-  }, [trackIndex, isLoopable]);
+    const startTimer = () => {
+      if (timer !== null) return;
+      timer = setInterval(goToNext, AUTO_PLAY_INTERVAL);
+    };
+
+    const stopTimer = () => {
+      if (timer === null) return;
+      clearInterval(timer);
+      timer = null;
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "hidden") {
+        stopTimer();
+        return;
+      }
+      setTrackIndex((prev) => {
+        const normalizedIndex = offset + (((prev - offset) % slides.length) + slides.length) % slides.length;
+        if (prev !== normalizedIndex) setTransitionEnabled(false);
+        return normalizedIndex;
+      });
+      startTimer();
+    };
+
+    if (document.visibilityState !== "hidden") startTimer();
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      stopTimer();
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [isLoopable, offset, slides.length]);
 
   const handleDragStart = (clientX: number) => {
     dragStartX.current = clientX;

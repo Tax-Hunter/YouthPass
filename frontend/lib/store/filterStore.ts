@@ -31,9 +31,13 @@ export const useFilterStore = create<FilterStore>()(
       filterApplied: false,
       _hasHydrated: false,
       saveFilters: (newFilters) => set({ filters: newFilters, filterApplied: true }),
-      // age는 설문(SurveyScreen) 응답 값이라 필터 초기화 대상에서 제외 — 그대로 유지
+      // age·educationLevel은 설문(SurveyScreen) 응답 값이라 필터 초기화 대상에서 제외 — 그대로 유지
       clearFilters: () => set((state) => ({
-        filters: { ...DEFAULT_FILTERS, age: state.filters.age },
+        filters: {
+          ...DEFAULT_FILTERS,
+          age: state.filters.age,
+          educationLevel: state.filters.educationLevel,
+        },
         filterApplied: false,
       })),
       setHasHydrated: (v) => set({ _hasHydrated: v }),
