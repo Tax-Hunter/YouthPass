@@ -207,7 +207,9 @@ def _to_card(p: Policy, inq_cnt: Optional[int] = None) -> PolicyCard:
 def _hydrate_cards(db: Session, plcy_nos: List[str], size: int) -> List[PolicyCard]:
     # ES가 반환한 plcy_no 순서열 → PG 재조회 → 카드 조립 (dday 등 시점 파생값은 여기서 계산).
     # IN 조회는 순서를 보장하지 않으므로 ES 순서로 재정렬 후 size로 절단한다.
-    # 색인 이후 소프트만료된 문서는 is_active 필터에서 자연 탈락 — ES 요청의 여유분이 보충.
+    # 색인 이후 소프트만료된 문서는 is_active 필터에서 탈락하고 보충 없이 짧은 페이지를 허용
+    # (버퍼 보충은 페이지 경계 카드 중복을 만든다 — es_query.py 참조). 탈락 발생 시
+    # total 보정·캐시 스킵은 호출측(_es_search)이 책임진다.
     if not plcy_nos:
         return []
     rows = (
@@ -323,8 +325,8 @@ def _es_search(
     """q 검색을 ES(nori 형태소·멀티필드·관련도)로 시도. 반환 (응답 or None, cache_allowed).
 
     - (None, True):  q 없음 또는 ES 미설정 — 정상 PG 경로(폴백 아님, 캐시 저장 유지)
-    - (None, False): ES 시도 중 실패 — PG 폴백, 폴백 응답은 캐시 저장 스킵(품질 저하 잔존 방지)
-    - (응답, True):  ES 성공 — 응답은 이미 캐시에 저장됨
+    - (None, False): ES 시도 중 실패 또는 스테일 전량 탈락 — PG 폴백, 폴백 응답은 캐시 저장 스킵
+    - (응답, True):  ES 성공 — 스테일 탈락이 없을 때만 캐시에 저장됨
     get_es()는 잘못된 URL에 생성자 예외를 던질 수 있어 반드시 try 안에서 호출한다(fail-open).
     """
     if not (q_text and q_text.strip()):
@@ -341,11 +343,27 @@ def _es_search(
             age=age, applicable=applicable, sort=sort, page=page, size=size,
             today_kst=_today_kst(),
         )
-        resp = PolicyListResponse(
-            total=total, page=page, size=size,
-            items=_hydrate_cards(db, plcy_nos, size),
-        )
-        policy_cache_set(cache_kind, cache_id, resp.model_dump_json())
+        items = _hydrate_cards(db, plcy_nos, size)
+        # 색인·DB 시점차(재색인 실패 fail-soft 창 등)로 소프트만료분이 hydration에서 탈락하면
+        # ES total과 items 수가 어긋난다.
+        # · 전량 탈락: total>0·items=[] 사구간(프론트가 '결과 없음'을 렌더하고 다음 페이지를
+        #   영영 요청하지 않음) → 자기일관적인 PG 폴백으로 넘긴다.
+        # · 부분 탈락: total은 ES 전역값 그대로 둔다. 페이지 지역 탈락분을 전역 total에서
+        #   빼면 페이지마다 total이 달라지고, 탈락이 많은 페이지에서 total이 page*size 아래로
+        #   내려가 프론트 무한스크롤이 조기 종료된다(잔여 페이지 유실). 과대 계수가 조기
+        #   종료보다 무해하다.
+        # 어느 경우든 어긋난 응답이 KST 자정까지 고착되지 않도록 캐시 저장은 생략한다.
+        dropped = len(plcy_nos) - len(items)
+        if plcy_nos and not items:
+            logger.warning(
+                "ES 스테일 전량 탈락 — PG 폴백: page=%s, ES ids=%s", page, len(plcy_nos))
+            return None, False
+        resp = PolicyListResponse(total=total, page=page, size=size, items=items)
+        if dropped:
+            logger.warning(
+                "ES 스테일 %s건 탈락 — 캐시 스킵 (page=%s, total=%s)", dropped, page, total)
+        else:
+            policy_cache_set(cache_kind, cache_id, resp.model_dump_json())
         return resp, True
     except Exception as e:
         logger.warning("ES 검색 실패 — PG 폴백: %s: %s", type(e).__name__, e)
