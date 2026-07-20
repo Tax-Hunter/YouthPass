@@ -34,7 +34,7 @@ _SEARCH_FIELDS = [
 ]
 
 
-def _sort_clause(sort: str, has_query: bool, today_kst: date) -> List[dict]:
+def _sort_clause(sort: str, today_kst: date) -> List[dict]:
     tiebreak = {"plcy_no": {"order": "desc"}}
     if sort == "popular":
         # PG: PolicyStats.inq_cnt DESC NULLS LAST → plcy_no DESC (policy.py:_apply_sort)
@@ -57,11 +57,10 @@ def _sort_clause(sort: str, has_query: bool, today_kst: date) -> List[dict]:
             }
         }
         return [rank_script, {"apply_end_date": {"order": "asc", "missing": "_last"}}, tiebreak]
-    # recent: q가 있으면 관련도 우선(재해석), 동점 시 최신순 — q 없는 요청은 ES로 오지 않는다.
-    if has_query:
-        return [{"_score": {"order": "desc"}},
-                {"first_seen_at": {"order": "desc", "missing": "_last"}}, tiebreak]
-    return [{"first_seen_at": {"order": "desc", "missing": "_last"}}, tiebreak]
+    # recent: 관련도 우선(재해석), 동점 시 최신순 — q 없는 요청은 ES로 오지 않으므로
+    # (policy.py _es_search가 q 없으면 즉시 PG 경로) 여기서는 항상 q가 있는 검색이다.
+    return [{"_score": {"order": "desc"}},
+            {"first_seen_at": {"order": "desc", "missing": "_last"}}, tiebreak]
 
 
 def build_search_body(
@@ -152,7 +151,7 @@ def build_search_body(
                 "query": q_text, "boost": 5, "analyzer": "korean_index"}}}],
             "filter": filters,
         }},
-        "sort": _sort_clause(sort, has_query=True, today_kst=today_kst),
+        "sort": _sort_clause(sort, today_kst=today_kst),
         "from": (page - 1) * size,
         "size": size,
         "track_total_hits": True,
@@ -178,13 +177,15 @@ def search_policy_ids(
         q_text=q_text, category=category, keywords=keywords, sido=sido, age=age,
         applicable=applicable, sort=sort, page=page, size=size, today_kst=today_kst,
     )
+    # ES 8 클라이언트는 body= 통짜 전달이 아닌 명명 인자를 받는다 — 값은 전부
+    # build_search_body 결과에서 유도해 요청 구성의 단일 원천을 유지한다(이중 지정 금지).
     res = es.search(
         index=settings.ES_INDEX_ALIAS,
         query=body["query"],
         sort=body["sort"],
         from_=body["from"],
         size=body["size"],
-        track_total_hits=True,
+        track_total_hits=body["track_total_hits"],
         source=False,
     )
     hits = res["hits"]
