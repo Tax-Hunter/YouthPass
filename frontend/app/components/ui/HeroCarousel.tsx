@@ -17,15 +17,25 @@ const SWIPE_THRESHOLD = 40;
 
 export default function HeroCarousel({ slides, className = "" }: HeroCarouselProps) {
   const isLoopable = slides.length > 1;
-  // 마지막 슬라이드 다음에 첫 슬라이드의 복제본을 붙여, 마지막 -> 처음 전환도 항상 정방향으로만 애니메이션되게 한다.
-  const trackSlides = isLoopable ? [...slides, { ...slides[0], id: `${slides[0].id}-clone` }] : slides;
+  // 앞뒤로 모두 순환하도록, 맨 앞엔 마지막 슬라이드의 복제본을, 맨 뒤엔 첫 슬라이드의 복제본을 붙인다.
+  // 실제 슬라이드는 offset(1)만큼 밀려서 trackSlides에 위치한다.
+  const offset = isLoopable ? 1 : 0;
+  const trackSlides = isLoopable
+    ? [
+        { ...slides[slides.length - 1], id: `${slides[slides.length - 1].id}-clone-start` },
+        ...slides,
+        { ...slides[0], id: `${slides[0].id}-clone-end` },
+      ]
+    : slides;
 
-  const [trackIndex, setTrackIndex] = useState(0);
+  const [trackIndex, setTrackIndex] = useState(offset);
   const [transitionEnabled, setTransitionEnabled] = useState(true);
   const dragStartX = useRef<number | null>(null);
   const isDragging = useRef(false);
 
-  const activeIndex = trackIndex >= slides.length ? 0 : trackIndex;
+  const activeIndex = isLoopable
+    ? (((trackIndex - offset) % slides.length) + slides.length) % slides.length
+    : trackIndex;
 
   const goToNext = () => {
     if (!isLoopable) return;
@@ -34,21 +44,30 @@ export default function HeroCarousel({ slides, className = "" }: HeroCarouselPro
   };
 
   const goToPrev = () => {
+    if (!isLoopable) {
+      setTransitionEnabled(true);
+      setTrackIndex((prev) => Math.max(0, prev - 1));
+      return;
+    }
     setTransitionEnabled(true);
-    setTrackIndex((prev) => Math.max(0, prev - 1));
+    setTrackIndex((prev) => prev - 1);
   };
 
   const goTo = (index: number) => {
     const clamped = Math.max(0, Math.min(index, slides.length - 1));
     setTransitionEnabled(true);
-    setTrackIndex(clamped);
+    setTrackIndex(clamped + offset);
   };
 
-  // 복제 슬라이드까지 정방향 애니메이션이 끝나면, 애니메이션 없이 실제 첫 슬라이드 위치로 되돌린다.
+  // 앞/뒤 복제 슬라이드까지 애니메이션이 끝나면, 애니메이션 없이 실제 슬라이드 위치로 되돌린다.
   const handleTransitionEnd = () => {
-    if (trackIndex === slides.length) {
+    if (!isLoopable) return;
+    if (trackIndex === trackSlides.length - 1) {
       setTransitionEnabled(false);
-      setTrackIndex(0);
+      setTrackIndex(offset);
+    } else if (trackIndex === 0) {
+      setTransitionEnabled(false);
+      setTrackIndex(slides.length);
     }
   };
 

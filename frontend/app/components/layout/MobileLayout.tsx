@@ -1,14 +1,25 @@
 "use client";
 
-import React, { useState, Suspense, useEffect, useRef } from "react";
+import React, { useState, Suspense, useEffect, useLayoutEffect, useRef } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Header from "./Header";
+import SplashScreen from "./SplashScreen";
 import ProfileScreen from "@/app/features/auth/ProfileScreen";
 import LoginPromptModal from "@/app/components/ui/LoginPromptModal";
 import ComingSoonModal from "@/app/components/ui/ComingSoonModal";
 import OpenInBrowserModal from "@/app/components/ui/OpenInBrowserModal";
 import { useUiStore } from "@/lib/store/uiStore";
+import { useAuthStore } from "@/lib/store/authStore";
 import { attemptAutoExitOnEntry } from "@/lib/inAppBrowser";
+import { usePullToRefresh } from "@/lib/usePullToRefresh";
+
+const SPLASH_SESSION_KEY = "splash-shown";
+const SPLASH_MIN_DURATION = 1500;
+
+// 서버 렌더링에서는 useLayoutEffect가 아무 동작도 하지 않는다는 경고를 피하기 위해
+// 브라우저에서만 useLayoutEffect를, 그 외(SSR)에서는 useEffect를 사용한다.
+const useIsomorphicLayoutEffect =
+  typeof window !== "undefined" ? useLayoutEffect : useEffect;
 
 interface Props {
   children: React.ReactNode;
@@ -19,6 +30,10 @@ export default function MobileLayout({ children }: Props) {
   const router = useRouter();
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isHeaderScrolled, setIsHeaderScrolled] = useState(false);
+  const [splashVisible, setSplashVisible] = useState(true);
+  const [splashMinTimeElapsed, setSplashMinTimeElapsed] = useState(false);
+  const skipSplashRef = useRef(false);
+  const authInitLoading = useAuthStore((s) => s.isLoading);
   const {
     loginModalOpen,
     closeLoginModal,
@@ -31,6 +46,8 @@ export default function MobileLayout({ children }: Props) {
     bumpSearchVisit,
   } = useUiStore();
   const prevPathnameRef = useRef(pathname);
+  const contentRef = useRef<HTMLDivElement>(null);
+  const { pullDistance, isRefreshing } = usePullToRefresh(contentRef);
 
   // 사이트 진입(최초 마운트) 시점에 인앱 브라우저 여부를 감지해 외부 브라우저 전환을 시도한다.
   // 로그인 버튼을 누르기 전이라도 카카오톡/Android는 곧바로 Chrome/Safari로 넘어가고,
@@ -41,6 +58,31 @@ export default function MobileLayout({ children }: Props) {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // 스플래시 스크린 — 브라우저 세션당 최초 1회만 노출.
+  // 이미 표시된 세션이면 브라우저가 화면을 그리기 전(useLayoutEffect)에 감춰
+  // 페이드아웃 트랜지션이 눈에 보이지 않도록 한다(풀투리프레시 등 전체 리로드 시 재노출 방지).
+  useIsomorphicLayoutEffect(() => {
+    if (sessionStorage.getItem(SPLASH_SESSION_KEY)) {
+      skipSplashRef.current = true;
+      setSplashVisible(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (skipSplashRef.current) return;
+    const timer = setTimeout(() => setSplashMinTimeElapsed(true), SPLASH_MIN_DURATION);
+    return () => clearTimeout(timer);
+  }, []);
+
+  // 최소 노출 시간과 인증 초기화(initAuth) 완료 시점 중 늦게 끝나는 쪽에 맞춰 해제
+  useEffect(() => {
+    if (skipSplashRef.current) return;
+    if (splashMinTimeElapsed && !authInitLoading) {
+      setSplashVisible(false);
+      sessionStorage.setItem(SPLASH_SESSION_KEY, "1");
+    }
+  }, [splashMinTimeElapsed, authInitLoading]);
 
   useEffect(() => {
     if (pathname !== "/search") {
@@ -93,8 +135,10 @@ export default function MobileLayout({ children }: Props) {
   };
 
   return (
-    <div className="min-h-dvh bg-white sm:bg-slate-950 flex items-center justify-center p-0 sm:p-4 font-sans select-none relative overflow-hidden overscroll-none">
-      <div className="w-full sm:w-[375px] h-dvh sm:h-[812px] overflow-hidden shadow-[0_24px_60px_rgba(0,0,0,0.8)] border border-slate-900 sm:border-white/10 relative bg-white flex flex-col overscroll-none">
+    <div className="min-h-dvh bg-white sm:bg-slate-950 flex items-center justify-center p-0 font-sans select-none relative overflow-hidden overscroll-none">
+      <div className="w-full sm:w-[375px] h-dvh overflow-hidden shadow-[0_24px_60px_rgba(0,0,0,0.8)] border border-slate-900 sm:border-white/10 relative bg-white flex flex-col overscroll-none">
+        <SplashScreen visible={splashVisible} />
+
         {/* Unified sticky header componentized and used only once */}
         {showHeader && (
           <Suspense fallback={<div className="w-full h-[76px] bg-white border-b border-slate-100 shrink-0" />}>
@@ -125,7 +169,27 @@ export default function MobileLayout({ children }: Props) {
           />
         )}
 
-        <div className="flex-1 min-h-0 overflow-hidden relative">
+        {/* 당겨서 새로고침 인디케이터 — Header가 absolute로 떠 있어 콘텐츠는 그 밑으로 흐르므로,
+            헤더 바로 아래(top-header)에 절대 위치로 배치해야 실제로 보인다. pullDistance만큼
+            높이가 늘어나며 그 안에서 스피너가 회전하고, 새로고침이 예약되면(isRefreshing)
+            reload 직전까지 고정 높이로 유지된다. */}
+        {showHeader && (pullDistance > 0 || isRefreshing) && (
+          <div
+            className="absolute inset-x-0 top-header z-10 flex items-center justify-center overflow-hidden pointer-events-none"
+            style={{ height: isRefreshing ? 56 : pullDistance }}
+          >
+            <div className="w-5 h-5 border-2 border-blue-200 border-t-blue-600 rounded-full animate-spin" />
+          </div>
+        )}
+
+        <div
+          ref={contentRef}
+          className="flex-1 min-h-0 overflow-hidden relative"
+          style={{
+            transform: `translateY(${isRefreshing ? 56 : pullDistance}px)`,
+            transition: pullDistance === 0 ? "transform 200ms ease-out" : undefined,
+          }}
+        >
           {children}
         </div>
 

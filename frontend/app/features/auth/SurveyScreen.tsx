@@ -256,7 +256,7 @@ export default function SurveyScreen({ onNavigate }: ScreenProps) {
     if (step === 1) {
       if (age === "") return false;
       const manAge = toManAge(Number(age));
-      return manAge >= 19 && manAge <= 34;
+      return manAge >= 19 && manAge <= 39;
     }
     if (step === 2) return city !== "";
     if (step === 3) return selectedCount > 0;
@@ -388,7 +388,7 @@ export default function SurveyScreen({ onNavigate }: ScreenProps) {
   }, [step, isCityOpen, city, selectedCount, isSubmitting, goNext]);
 
   const stepMeta = [
-    { q: "나이가 어떻게 되시나요?", hint: "만 나이 기준 19~34세 (실제 나이를 입력해주세요)" },
+    { q: "나이가 어떻게 되시나요?", hint: "만 나이 기준 19~39세 (실제 나이를 입력해주세요)" },
     { q: "어디에 거주하시나요?", hint: "시·도 기준으로 선택해주세요" },
     {
       q: "어떤 분야 정책이\n필요하신가요?",
