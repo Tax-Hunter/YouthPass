@@ -3,7 +3,9 @@
 
 설계 근거: workflow/18_feat/phase1_ES도입계획.md 7절(매핑)·12절(동의어)
 - 분석기 2종: korean_index(색인), korean_search(검색 — synonym_graph 추가).
-  동의어를 검색 시점에만 적용하므로 사전 수정 시 재색인이 필요 없다.
+  동의어는 검색 시점에 적용되지만(색인된 토큰은 불변), 분석기 정의 자체가 인덱스
+  settings에 포함되므로 이 파일의 사전을 수정하면 새 인덱스 생성이 필요하다
+  — 배포 후 `python -m ingest.run reindex` 1회 실행(phase7 재색인 실행 기록 참조).
 - dday/days 등 시점 파생값과 raw_data 코드 필터 필드는 의도적으로 색인하지 않는다
   (파생값은 응답 조립 시 KST 계산, 코드 필터는 PostgreSQL 경로 영구 유지).
 - dynamic: strict — 색인 파이프라인이 정의 밖 필드를 넣으면 즉시 실패시켜 매핑 드리프트를 방지.
