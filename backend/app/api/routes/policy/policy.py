@@ -31,6 +31,7 @@ from app.api.routes.policy.constants import (
 )
 from app.core.es import get_es
 from app.api.routes.policy.es_query import search_policy_ids
+from app.api.routes.policy.search_stats import record_search, record_search_zero
 
 router = APIRouter(prefix="/policy", tags=["policy"])
 
@@ -385,6 +386,12 @@ def list_policies(
     page: int = Query(default=1, ge=1),
     size: int = Query(default=20, ge=1, le=100),
 ):
+    if q_text:
+        record_search(q_text)  # 캐시 조회 전 — 히트/미스 무관 빈도 기록 (search_stats)
+    # 0건 기록은 필터 없는 순수 텍스트 질의만 — 필터 때문에 0건이 된 것을 섞으면
+    # "텍스트가 안 맞아 0건"이라는 지표 의미가 오염된다(search_stats 계약).
+    zero_loggable = bool(q_text) and not (category or keywords or sido
+                                          or age is not None or applicable)
     cache_id = _cache_ident(q_text, category, keywords, sido, age, applicable, sort, page, size)
     cached = policy_cache_get("list", cache_id)
     if cached is not None:
@@ -395,6 +402,8 @@ def list_policies(
         db, cache_kind="list", cache_id=cache_id, q_text=q_text, category=category,
         keywords=keywords, sido=sido, age=age, applicable=applicable, sort=sort, page=page, size=size)
     if es_resp is not None:
+        if zero_loggable and es_resp.total == 0:
+            record_search_zero(q_text)
         return es_resp
 
     q = (
@@ -407,6 +416,8 @@ def list_policies(
     q = _apply_text_filter(q, q_text)
 
     total = q.count()
+    if zero_loggable and total == 0:
+        record_search_zero(q_text)
     q = _apply_sort(q, sort)
     rows = q.offset((page - 1) * size).limit(size).all()
     resp = PolicyListResponse(
@@ -454,6 +465,11 @@ def search_policies(
         }.items()
     }
 
+    if q_text:
+        record_search(q_text)  # 캐시 조회 전 — 히트/미스 무관 빈도 기록 (search_stats)
+    # 0건 기록은 필터(코드 8종 포함) 없는 순수 텍스트 질의만 — list_policies와 동일 계약
+    zero_loggable = bool(q_text) and not (category or keywords or sido or age is not None
+                                          or applicable or any(code_params.values()))
     # 캐시 식별자는 정규화된 코드 필터 기준 — 동치 요청(순서/중복 차이)이 같은 키를 공유
     cache_id = _cache_ident(q_text, category, keywords, sido, age, applicable, sort, page, size,
                             sorted((k, tuple(sorted(v))) for k, v in code_params.items()))
@@ -470,6 +486,8 @@ def search_policies(
             db, cache_kind="search", cache_id=cache_id, q_text=q_text, category=category,
             keywords=keywords, sido=sido, age=age, applicable=applicable, sort=sort, page=page, size=size)
         if es_resp is not None:
+            if zero_loggable and es_resp.total == 0:
+                record_search_zero(q_text)
             return es_resp
 
     q = (
@@ -483,6 +501,8 @@ def search_policies(
     q = _apply_code_filters(q, code_params)
 
     total = q.count()
+    if zero_loggable and total == 0:
+        record_search_zero(q_text)
     q = _apply_sort(q, sort)
     rows = q.offset((page - 1) * size).limit(size).all()
     resp = PolicyListResponse(
