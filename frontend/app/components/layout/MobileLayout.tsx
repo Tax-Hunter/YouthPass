@@ -39,6 +39,8 @@ export default function MobileLayout({ children }: Props) {
     closeLoginModal,
     supportModalOpen,
     closeSupportModal,
+    notificationModalOpen,
+    closeNotificationModal,
     openInBrowserModalOpen,
     showOpenInBrowserModal,
     closeOpenInBrowserModal,
@@ -201,6 +203,14 @@ export default function MobileLayout({ children }: Props) {
         {/* Coming Soon Modal — rendered at phone-frame level (z-[60], above drawer z-50) */}
         {supportModalOpen && (
           <ComingSoonModal onClose={closeSupportModal} />
+        )}
+
+        {/* Notification Coming Soon Modal — rendered at phone-frame level (z-[60], above drawer z-50) */}
+        {notificationModalOpen && (
+          <ComingSoonModal
+            onClose={closeNotificationModal}
+            title="알림 기능 준비 중이에요"
+          />
         )}
 
         {/* Open In Browser Modal (인앱 브라우저 감지 시 안내) — rendered at phone-frame level (z-[60], above drawer z-50) */}

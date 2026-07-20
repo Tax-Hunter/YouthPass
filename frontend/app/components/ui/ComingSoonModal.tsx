@@ -4,9 +4,21 @@ import React from "react";
 
 interface ComingSoonModalProps {
   onClose: () => void;
+  title?: string;
+  description?: React.ReactNode;
 }
 
-export default function ComingSoonModal({ onClose }: ComingSoonModalProps) {
+export default function ComingSoonModal({
+  onClose,
+  title = "고객센터 준비 중이에요",
+  description = (
+    <>
+      더 나은 서비스 제공을 위해
+      <br />
+      열심히 준비하고 있어요
+    </>
+  ),
+}: ComingSoonModalProps) {
   return (
     <div className="absolute inset-0 z-[60] flex items-end sm:items-center justify-center">
       {/* Backdrop */}
@@ -29,11 +41,10 @@ export default function ComingSoonModal({ onClose }: ComingSoonModalProps) {
         {/* Text */}
         <div className="text-center mb-7 space-y-2">
           <h3 className="text-[17px] font-bold text-slate-900 leading-snug">
-            고객센터 준비 중이에요
+            {title}
           </h3>
           <p className="text-xs text-slate-400 font-medium leading-relaxed">
-            더 나은 서비스 제공을 위해<br />
-            열심히 준비하고 있어요
+            {description}
           </p>
         </div>
 

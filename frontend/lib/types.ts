@@ -27,4 +27,5 @@ export interface FilterState {
   categories: Record<string, boolean>
   keywords?: string[]
   age?: number
+  educationLevel?: EducationLevel
 }
