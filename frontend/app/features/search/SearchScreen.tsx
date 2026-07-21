@@ -39,7 +39,17 @@ export default function SearchScreen({ onNavigate }: ScreenProps) {
   const [showClosedOnly, setShowClosedOnly] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const { toggle: toggleBookmark, isBookmarked } = useBookmarkStore();
-  const { filters, filterApplied, _hasHydrated } = useFilterStore();
+  const { filters, filterApplied, surveyAgeActive, _hasHydrated } = useFilterStore();
+  // 검색을 연 이후엔 설문 개인화를 이 화면 안에서만 숨김 — 전역 상태는 건드리지 않아
+  // 정책목록 등 다른 화면의 "첫 진입 시 설문 필터링" 동작에 영향 주지 않음
+  const [searchDismissedSurvey, setSearchDismissedSurvey] = useState(false);
+  // 설문을 새로 완료하면(같은 화면에서 오버레이로 완료해 리마운트가 안 일어나는 경우 포함)
+  // 이전에 검색을 열어 꺼뒀던 dismiss 상태를 초기화 — 렌더 중 비교라 useEffect 없이 처리
+  const [prevSurveyAgeActive, setPrevSurveyAgeActive] = useState(surveyAgeActive);
+  if (surveyAgeActive !== prevSurveyAgeActive) {
+    setPrevSurveyAgeActive(surveyAgeActive);
+    if (surveyAgeActive) setSearchDismissedSurvey(false);
+  }
   const { user } = useAuthStore();
 
   const openSurvey = () => {
@@ -66,6 +76,9 @@ export default function SearchScreen({ onNavigate }: ScreenProps) {
     const wasOpen = wasSearchOpenRef.current;
     wasSearchOpenRef.current = isSearchOpen;
     if (!isSearchOpen || wasOpen) return;
+    // 검색을 새로 열면 설문으로 자동 적용됐던 필터(나이·지역·카테고리)는 이 화면에서만 숨김 —
+    // 검색은 항상 전체 정책 대상으로 시작하고, 이후엔 사용자가 필터에서 직접 고른 조건만 반영
+    setSearchDismissedSurvey(true);
     // 검색 아이콘으로 새로 열릴 때는 이전 검색어를 지우고 빈 입력으로 시작
     // (최근 검색어 클릭으로 열리는 경우는 handleRecentClick에서 skipNextResetRef로 예외 처리)
     if (skipNextResetRef.current) {
@@ -83,13 +96,19 @@ export default function SearchScreen({ onNavigate }: ScreenProps) {
   // 설문 완료 배너는 서버에 기록된 완료 여부(user.survey_completed)를 우선 신뢰 —
   // 로컬 filters.age가 초기화/미동기화된 상태에서도 완료된 사용자에게 배너가 다시 뜨지 않도록 함
   const surveyCompleted = !!user?.survey_completed || hasSurvey;
-  const sido = filterApplied ? cityToSido(filters.city) : undefined;
-  const appliedCategories = filterApplied
+  // 사용자가 필터 화면에서 직접 적용한 상태(surveyAgeActive=false)면 city/category도 사용자가 고른 값 그대로 신뢰
+  const isManualFilter = filterApplied && !surveyAgeActive;
+  // 설문 직후 개인화는 이 화면에서 검색을 열기 전 기본 목록에서만 반영 — 검색을 열면 즉시 숨김
+  // (전역 surveyAgeActive는 그대로 둬서 정책목록 등 다른 화면엔 영향 없음)
+  const isSurveyDefault = surveyAgeActive && hasSurvey && !searchDismissedSurvey;
+  const applyStoredFilters = isManualFilter || isSurveyDefault;
+  const sido = applyStoredFilters ? cityToSido(filters.city) : undefined;
+  const appliedCategories = applyStoredFilters
     ? Object.entries(filters.categories)
         .filter(([, v]) => v)
         .map(([k]) => k)
     : [];
-  const appliedJobCodes = filterApplied
+  const appliedJobCodes = isManualFilter
     ? employmentToJobCodes(filters.employment)
     : [];
 
@@ -100,17 +119,23 @@ export default function SearchScreen({ onNavigate }: ScreenProps) {
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
-  } = useInfinitePolicyList({
-    ...(effectiveQuery ? { q: effectiveQuery } : { sort: "recent" }),
-    size: 20,
-    // 백엔드에 마감만 조회하는 파라미터가 없어(applicable=true는 "마감 제외"만 지원),
-    // 토글 OFF일 때만 applicable=true로 마감 제외 조회하고 ON일 때는 무필터로 받아 dday로 클라이언트 필터링
-    ...(!showClosedOnly && { applicable: true }),
-    ...(sido && { sido }),
-    ...(filterApplied && hasSurvey && { age: filters.age as number }),
-    ...(appliedCategories.length > 0 && { category: appliedCategories }),
-    ...(appliedJobCodes.length > 0 && { job: appliedJobCodes }),
-  });
+  } = useInfinitePolicyList(
+    _hasHydrated
+      ? {
+          ...(effectiveQuery ? { q: effectiveQuery } : { sort: "recent" }),
+          size: 20,
+          // 백엔드에 마감만 조회하는 파라미터가 없어(applicable=true는 "마감 제외"만 지원),
+          // 토글 OFF일 때만 applicable=true로 마감 제외 조회하고 ON일 때는 무필터로 받아 dday로 클라이언트 필터링
+          ...(!showClosedOnly && { applicable: true }),
+          ...(sido && { sido }),
+          ...(isSurveyDefault && { age: filters.age as number }),
+          ...(appliedCategories.length > 0 && { category: appliedCategories }),
+          ...(appliedJobCodes.length > 0 && { job: appliedJobCodes }),
+        }
+      : null,
+  );
+
+  const showSkeleton = !_hasHydrated || isLoading;
 
   const closedFilteredItems = showClosedOnly
     ? items.filter((p) => p.dday === "마감")
@@ -284,7 +309,7 @@ export default function SearchScreen({ onNavigate }: ScreenProps) {
             <span className="text-xs font-bold text-slate-800">
               {effectiveQuery ? "검색 결과" : showClosedOnly ? "마감" : "전체"}
             </span>
-            {!isLoading && !showClosedOnly && (
+            {!showSkeleton && !showClosedOnly && (
               <span className="text-xs font-bold text-blue-600 font-mono">
                 {total}
               </span>
@@ -311,7 +336,7 @@ export default function SearchScreen({ onNavigate }: ScreenProps) {
         </div>
 
         <div className="px-screen py-4 space-y-5">
-          {isLoading ? (
+          {showSkeleton ? (
             Array.from({ length: 3 }).map((_, i) => (
               <div
                 key={i}
@@ -362,7 +387,7 @@ export default function SearchScreen({ onNavigate }: ScreenProps) {
 
       <FloatingFilterButton
         onClick={() => setIsFilterOpen(true)}
-        active={filterApplied}
+        active={applyStoredFilters}
       />
 
       {isFilterOpen && (
