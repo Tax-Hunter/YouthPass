@@ -60,3 +60,6 @@ run.bat
 
 # Documentation
 docs/
+
+# 테스트는 팀 규칙상 git 미추적(로컬 전용)
+backend/tests/

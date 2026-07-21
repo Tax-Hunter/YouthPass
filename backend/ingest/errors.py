@@ -22,3 +22,11 @@ class IngestFetchError(Exception):
         self.status_code = status_code   # HTTP 상태코드(있으면) — 재시도 정책 분기용
         self.url = url                   # 호출 URL
         self.attempt = attempt           # 최종 실패 시 시도 횟수
+
+
+class IngestEsIndexError(Exception):
+    """ES 재색인 실패 — DB 적재는 이미 커밋된 뒤이므로 fail-soft(경고 종료코드) 처리 대상."""
+
+    def __init__(self, message, *, index_name=None):
+        super().__init__(message)
+        self.index_name = index_name     # 만들다 실패한 물리 인덱스 이름

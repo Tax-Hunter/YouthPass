@@ -26,9 +26,13 @@ BROWSER_HEADERS = {
 TEMPLATE_HINTS = ("여기에", "your", "발급", "changeme", "xxxx", "{{")
 
 # ── 적재(loader) ──
-LOAD_BATCH_SIZE = 500          # UPSERT 청크 크기
+LOAD_BATCH_SIZE = 500          # UPSERT 청크 크기 (ES bulk 청크에도 공용)
 SOFT_EXPIRE_MAX_RATE = 0.30    # 1회 소프트만료 상한(현 활성 대비). 초과 시 부분수집/빈입력 의심 → 만료 스킵
 
 # 적재 동시실행 방지 advisory lock 키. "YP10"(YouthPass #10) ASCII 인코딩.
 # 배포 후 변경 금지 — 운영 중 바꾸면 이전 실행이 잡은 락을 못 풀어 orphan 발생.
 LOAD_LOCK_KEY = 0x59503130
+
+# ── ES 색인(es_indexer) ──
+# 검색용 타임아웃(settings.ES_TIMEOUT_S, 기본 2s)은 bulk 색인에 부족 — 색인 작업 전용 상한
+ES_INDEX_TIMEOUT_SEC = 30
