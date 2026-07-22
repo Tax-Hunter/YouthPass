@@ -160,7 +160,7 @@ export default function Header({
   if (isLocationHeader) {
     return (
       <header
-        className="w-full absolute top-0 left-0 right-0 z-30 shrink-0 box-border select-none"
+        className="w-full absolute top-0 left-0 right-0 z-30 shrink-0 box-border select-none bg-white"
         style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}
       >
         <HeaderRow isScrolled={isScrolled}>
@@ -206,7 +206,7 @@ export default function Header({
 
   return (
     <header
-      className="w-full absolute top-0 left-0 right-0 z-30 shrink-0 box-border select-none"
+      className="w-full absolute top-0 left-0 right-0 z-30 shrink-0 box-border select-none bg-white"
       style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}
     >
       <HeaderRow isScrolled={isScrolled}>
