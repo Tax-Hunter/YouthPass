@@ -204,11 +204,13 @@ export default function SurveyScreen({ onNavigate }: ScreenProps) {
     router.push(`/${screenId}`);
   };
   const { user, setUser } = useAuthStore();
-  const { saveFilters, filters } = useFilterStore();
+  const { applySurveyFilters, filters } = useFilterStore();
 
   const [step, setStep] = useState(1);
+  // filters.age는 이미 -1 변환된 만 나이로 저장돼 있으므로, 사용자가 입력하는 체감 나이 표시값으로
+  // 되돌리기 위해 +1 역변환한다 (표시-변환-저장 왕복이 항등이 되도록).
   const [age, setAge] = useState(
-    filters.age != null ? String(filters.age) : "",
+    filters.age != null ? String(filters.age + 1) : "",
   );
   const [city, setCity] = useState(filters.city || "전국");
   const [isCityOpen, setIsCityOpen] = useState(false);
@@ -222,8 +224,10 @@ export default function SurveyScreen({ onNavigate }: ScreenProps) {
   });
   const [employmentStatus, setEmploymentStatus] =
     useState<EmploymentStatus | null>(user?.employment_status ?? null);
+  // education_level은 백엔드 컬럼 미구현으로 user에 저장되지 않으므로, filterStore에 로컬로
+  // 영속화해 둔 값을 재진입 시 초기값으로 사용한다 (workflow/26_fix/phase1_버그수정.md 참고).
   const [educationLevel, setEducationLevel] = useState<EducationLevel | null>(
-    user?.education_level ?? null,
+    user?.education_level ?? filters.educationLevel ?? null,
   );
   const [specialConditions, setSpecialConditions] = useState<
     SpecialCondition[]
@@ -276,11 +280,12 @@ export default function SurveyScreen({ onNavigate }: ScreenProps) {
 
     const manAge = toManAge(Number(age));
 
-    saveFilters({
+    applySurveyFilters({
       ...filters,
       city,
       categories: selectedCategories,
       age: manAge,
+      educationLevel: educationLevel ?? undefined,
     });
 
     if (user) {

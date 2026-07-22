@@ -7,6 +7,9 @@ interface UiState {
   supportModalOpen: boolean
   openSupportModal: () => void
   closeSupportModal: () => void
+  notificationModalOpen: boolean
+  openNotificationModal: () => void
+  closeNotificationModal: () => void
   openInBrowserModalOpen: boolean
   showOpenInBrowserModal: () => void
   closeOpenInBrowserModal: () => void
@@ -26,6 +29,9 @@ export const useUiStore = create<UiState>((set) => ({
   supportModalOpen: false,
   openSupportModal: () => set({ supportModalOpen: true }),
   closeSupportModal: () => set({ supportModalOpen: false }),
+  notificationModalOpen: false,
+  openNotificationModal: () => set({ notificationModalOpen: true }),
+  closeNotificationModal: () => set({ notificationModalOpen: false }),
   openInBrowserModalOpen: false,
   showOpenInBrowserModal: () => set({ openInBrowserModalOpen: true }),
   closeOpenInBrowserModal: () => set({ openInBrowserModalOpen: false }),

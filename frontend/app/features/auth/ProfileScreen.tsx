@@ -15,7 +15,7 @@ interface ScreenProps {
 
 export default function ProfileScreen({ onNavigate, onClose }: ScreenProps) {
   const { user, isLoading } = useAuthStore();
-  const { openLoginModal, openSupportModal, showOpenInBrowserModal } = useUiStore();
+  const { openLoginModal, openSupportModal, openNotificationModal, showOpenInBrowserModal } = useUiStore();
   const router = useRouter();
   const { logout, isLoggingOut } = useLogout({
     onSuccess: () => {
@@ -33,7 +33,7 @@ export default function ProfileScreen({ onNavigate, onClose }: ScreenProps) {
   return (
     <div className="flex flex-col h-full bg-white text-slate-800 font-sans select-none overflow-hidden">
       {/* Sticky Profile Header */}
-      <div className="sticky top-0 z-10 px-6 py-6 shrink-0 border-b border-slate-100 bg-white">
+      <div className="sticky top-0 z-10 px-screen py-6 shrink-0 border-b border-slate-100 bg-white">
         {!isLoading && !user ? (
           /* 비로그인 상태 */
           <div className="flex flex-col gap-3">
@@ -89,7 +89,7 @@ export default function ProfileScreen({ onNavigate, onClose }: ScreenProps) {
       </div>
 
       {/* Scrollable Menu Sections */}
-      <div className="flex-1 overflow-y-auto scroll-stable px-6 py-5 space-y-6 flex flex-col">
+      <div className="flex-1 overflow-y-auto scroll-stable px-screen py-5 space-y-6 flex flex-col">
 
         {/* Section 1: 메뉴 */}
         <div className="space-y-2.5">
@@ -150,6 +150,7 @@ export default function ProfileScreen({ onNavigate, onClose }: ScreenProps) {
                 key={item.id}
                 onClick={() => {
                   if (item.id === "support") openSupportModal();
+                  else if (item.id === "settings") openNotificationModal();
                 }}
                 className="w-full flex items-center justify-between py-3.5 px-2 hover:bg-slate-50 rounded-xl transition-all group"
               >
@@ -203,7 +204,7 @@ export default function ProfileScreen({ onNavigate, onClose }: ScreenProps) {
 
       {/* Sticky Bottom: 로그인 상태일 때만 표시 */}
       {(isLoading || user) && (
-        <div className="sticky bottom-0 shrink-0 px-6 pt-4 pb-6 flex flex-col items-center gap-3 border-t border-slate-100 bg-white">
+        <div className="sticky bottom-0 shrink-0 px-screen pt-4 pb-6 flex flex-col items-center gap-3 border-t border-slate-100 bg-white">
           <button
             onClick={logout}
             disabled={isLoggingOut}

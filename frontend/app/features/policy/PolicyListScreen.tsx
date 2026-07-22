@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import dynamic from "next/dynamic";
 import { useBookmarkStore } from "@/lib/store/bookmarkStore";
 import { useAuthStore } from "@/lib/store/authStore";
 import {
@@ -13,20 +14,20 @@ import { useUiStore } from "@/lib/store/uiStore";
 import { cityToSido } from "@/lib/sidoMap";
 import PolicyCard from "@/app/components/ui/PolicyCard";
 import FloatingFilterButton from "@/app/components/ui/FloatingFilterButton";
-import FilterScreen from "@/app/features/filter/FilterScreen";
-import SurveyScreen from "@/app/features/auth/SurveyScreen";
-import { useRouter } from "next/navigation";
+
+// 필터/설문 오버레이는 열 때만 필요 — 정책 목록 초기 로드 번들에서 제외
+const FilterScreen = dynamic(() => import("@/app/features/filter/FilterScreen"));
+const SurveyScreen = dynamic(() => import("@/app/features/auth/SurveyScreen"));
 
 interface ScreenProps {
   onNavigate?: (screenId: string) => void;
 }
 
 export default function PolicyListScreen({ onNavigate }: ScreenProps) {
-  const router = useRouter();
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [isSurveyOpen, setIsSurveyOpen] = useState(false);
   const { isBookmarked, toggle: toggleBookmark } = useBookmarkStore();
-  const { filters, filterApplied, _hasHydrated } = useFilterStore();
+  const { filters, filterApplied, surveyAgeActive, _hasHydrated } = useFilterStore();
   const { user } = useAuthStore();
   const { openLoginModal } = useUiStore();
 
@@ -42,7 +43,9 @@ export default function PolicyListScreen({ onNavigate }: ScreenProps) {
   // 설문 완료 배너는 서버에 기록된 완료 여부(user.survey_completed)를 우선 신뢰 —
   // 로컬 filters.age가 초기화/미동기화된 상태에서도 완료된 사용자에게 배너가 다시 뜨지 않도록 함
   const surveyCompleted = !!user?.survey_completed || hasSurvey;
-  const applyLocation = hasSurvey || filterApplied;
+  // 나이 기반 개인화는 설문 직후(surveyAgeActive)에만 반영 — 사용자가 필터를 직접 적용/초기화하면 꺼짐
+  const showSurveyAge = surveyAgeActive && hasSurvey;
+  const applyLocation = showSurveyAge || filterApplied;
   const sido = applyLocation ? cityToSido(filters.city) : undefined;
   // 매칭 점수 기반 추천 정렬(sort=recommended)은 백엔드 미구현으로 임시 비활성화.
   // 복구 시 `useAuthStore`에서 user를 다시 가져와 `!!user?.survey_completed`로 되돌리기
@@ -50,7 +53,7 @@ export default function PolicyListScreen({ onNavigate }: ScreenProps) {
   const useRecommended = false;
 
   const appliedCategories =
-    hasSurvey || filterApplied
+    showSurveyAge || filterApplied
       ? Object.entries(filters.categories)
           .filter(([, v]) => v)
           .map(([k]) => k)
@@ -61,7 +64,7 @@ export default function PolicyListScreen({ onNavigate }: ScreenProps) {
         sort: useRecommended ? ("recommended" as const) : ("recent" as const),
         applicable: true,
         ...(sido && { sido }),
-        ...(hasSurvey && { age: filters.age as number }),
+        ...(showSurveyAge && { age: filters.age as number }),
         ...(appliedCategories.length > 0 && { category: appliedCategories }),
       }
     : null;

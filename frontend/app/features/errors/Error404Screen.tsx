@@ -12,7 +12,7 @@ export default function Error404Screen({ onNavigate }: ScreenProps) {
   return (
     <div className="flex flex-col h-full bg-white text-slate-800 font-sans select-none overflow-hidden">
       {/* Main Illustration & Error Text */}
-      <div className="flex-1 overflow-y-auto scroll-stable flex flex-col items-center justify-center px-6 py-10 text-center min-h-[350px]">
+      <div className="flex-1 overflow-y-auto scroll-stable flex flex-col items-center justify-center px-screen py-10 text-center min-h-[350px]">
         
         {/* Sad emoji magnifying glass graphic container */}
         <div className="relative mb-8 flex items-center justify-center">
@@ -56,7 +56,7 @@ export default function Error404Screen({ onNavigate }: ScreenProps) {
       </div>
 
       {/* Bottom redirection action button */}
-      <footer className="px-6 pb-10 shrink-0">
+      <footer className="px-screen pb-10 shrink-0">
         <button
           onClick={() => onNavigate?.("home")}
           onMouseEnter={() => {

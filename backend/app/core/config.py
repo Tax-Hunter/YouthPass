@@ -37,6 +37,11 @@ class Settings(BaseSettings):
     # 빈값이면 Redis 기능(정책 응답 캐시 등) 전체가 조용히 비활성 — 로컬/미구성 환경 기본
     REDIS_URL: str = Field(default="", description="Redis 연결 URL (Railway Redis의 REDIS_URL)")
 
+    # 빈값이면 ES 검색 기능 전체가 조용히 비활성(모든 검색이 PostgreSQL 경로) — 로컬/미구성 환경 기본
+    ELASTICSEARCH_URL: str = Field(default="", description="Elasticsearch 연결 URL (basic auth 포함 가능)")
+    ES_INDEX_ALIAS: str = Field(default="youthpass-policy", description="정책 검색 인덱스 alias (검색·색인 모두 alias 경유)")
+    ES_TIMEOUT_S: float = Field(default=2.0, description="ES 요청 타임아웃(초) — 초과 시 PostgreSQL 폴백")
+
     R2_ACCOUNT_ID: str = Field(default="", description="Cloudflare R2 계정 ID")
     R2_ACCESS_KEY_ID: str = Field(default="", description="R2 API 액세스 키")
     R2_SECRET_ACCESS_KEY: str = Field(default="", description="R2 API 시크릿 키")

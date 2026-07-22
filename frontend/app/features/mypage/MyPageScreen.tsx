@@ -8,6 +8,7 @@ import { useFilterStore } from "@/lib/store/filterStore";
 import { useUiStore } from "@/lib/store/uiStore";
 import { useLogout } from "@/lib/useLogout";
 import EditProfileModal from "@/app/components/ui/EditProfileModal";
+import ScreenContent, { ScreenBleed } from "@/app/components/layout/ScreenContent";
 
 interface ScreenProps {
   onNavigate?: (screenId: string) => void;
@@ -51,9 +52,9 @@ export default function MyPageScreen({ onNavigate }: ScreenProps) {
 
   return (
     <div className="relative flex flex-col h-full bg-white text-slate-800 font-sans select-none overflow-hidden">
-      <div className="flex-1 overflow-y-auto scroll-stable min-h-112.5 flex flex-col pt-header">
+      <ScreenContent className="min-h-112.5 flex flex-col">
       {/* Main Profile Header */}
-      <div className="px-6 py-6 flex items-center gap-4 shrink-0">
+      <div className="py-6 flex items-center gap-4 shrink-0">
         <div className="w-16 h-16 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-400 overflow-hidden">
           {user?.profile_image ? (
             <img
@@ -98,7 +99,7 @@ export default function MyPageScreen({ onNavigate }: ScreenProps) {
       </div>
 
       {/* Settings Card Blocks */}
-      <div className="px-6 py-2 space-y-4 shrink-0">
+      <div className="py-2 space-y-4 shrink-0">
 
         {/* Bookmarked Policy Card */}
         <button
@@ -142,7 +143,7 @@ export default function MyPageScreen({ onNavigate }: ScreenProps) {
       </div>
 
       {/* User filter status capsules */}
-      <div className="px-6 py-6 flex flex-wrap gap-2 shrink-0 border-b border-slate-50">
+      <ScreenBleed className="px-screen py-6 flex flex-wrap gap-2 shrink-0 border-b border-slate-50">
         {filterBadges.length > 0 ? (
           filterBadges.map((badge) => (
             <span
@@ -155,10 +156,10 @@ export default function MyPageScreen({ onNavigate }: ScreenProps) {
         ) : (
           <span className="text-xs text-slate-400 font-semibold">설문을 완료하면 조건이 표시됩니다</span>
         )}
-      </div>
+      </ScreenBleed>
 
       {/* Survey modification action button */}
-      <div className="px-6 py-4 shrink-0">
+      <div className="py-4 shrink-0">
         <button
           onClick={openSurveyEdit}
           onMouseEnter={() => {
@@ -171,7 +172,7 @@ export default function MyPageScreen({ onNavigate }: ScreenProps) {
       </div>
 
       {/* Logout Action button */}
-      <div className="px-6 pb-10 pt-4 shrink-0 mt-auto">
+      <div className="pb-10 pt-4 shrink-0 mt-auto">
         <button
           onClick={logout}
           disabled={isLoggingOut}
@@ -181,7 +182,7 @@ export default function MyPageScreen({ onNavigate }: ScreenProps) {
         </button>
       </div>
 
-      </div>
+      </ScreenContent>
 
       {isEditModalOpen && (
         <EditProfileModal onClose={() => setIsEditModalOpen(false)} />

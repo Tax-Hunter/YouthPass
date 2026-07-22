@@ -30,15 +30,16 @@ export default function MobileLayout({ children }: Props) {
   const router = useRouter();
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isHeaderScrolled, setIsHeaderScrolled] = useState(false);
-  const [splashVisible, setSplashVisible] = useState(true);
+  const [skipSplash, setSkipSplash] = useState(false);
   const [splashMinTimeElapsed, setSplashMinTimeElapsed] = useState(false);
-  const skipSplashRef = useRef(false);
   const authInitLoading = useAuthStore((s) => s.isLoading);
   const {
     loginModalOpen,
     closeLoginModal,
     supportModalOpen,
     closeSupportModal,
+    notificationModalOpen,
+    closeNotificationModal,
     openInBrowserModalOpen,
     showOpenInBrowserModal,
     closeOpenInBrowserModal,
@@ -64,25 +65,26 @@ export default function MobileLayout({ children }: Props) {
   // 페이드아웃 트랜지션이 눈에 보이지 않도록 한다(풀투리프레시 등 전체 리로드 시 재노출 방지).
   useIsomorphicLayoutEffect(() => {
     if (sessionStorage.getItem(SPLASH_SESSION_KEY)) {
-      skipSplashRef.current = true;
-      setSplashVisible(false);
+      setSkipSplash(true);
     }
   }, []);
 
   useEffect(() => {
-    if (skipSplashRef.current) return;
+    if (skipSplash) return;
     const timer = setTimeout(() => setSplashMinTimeElapsed(true), SPLASH_MIN_DURATION);
     return () => clearTimeout(timer);
-  }, []);
+  }, [skipSplash]);
 
-  // 최소 노출 시간과 인증 초기화(initAuth) 완료 시점 중 늦게 끝나는 쪽에 맞춰 해제
+  // splashVisible은 skipSplash/splashMinTimeElapsed/authInitLoading의 순수 파생값 —
+  // 최소 노출 시간과 인증 초기화(initAuth) 완료 시점 중 늦게 끝나는 쪽에 맞춰 자동으로 꺼짐
+  const splashVisible = !skipSplash && !(splashMinTimeElapsed && !authInitLoading);
+
+  // 세션 플래그 기록은 상태 파생과 분리된 순수 부수효과라 setState 없이 여기서만 처리
   useEffect(() => {
-    if (skipSplashRef.current) return;
-    if (splashMinTimeElapsed && !authInitLoading) {
-      setSplashVisible(false);
+    if (!skipSplash && splashMinTimeElapsed && !authInitLoading) {
       sessionStorage.setItem(SPLASH_SESSION_KEY, "1");
     }
-  }, [splashMinTimeElapsed, authInitLoading]);
+  }, [skipSplash, splashMinTimeElapsed, authInitLoading]);
 
   useEffect(() => {
     if (pathname !== "/search") {
@@ -201,6 +203,14 @@ export default function MobileLayout({ children }: Props) {
         {/* Coming Soon Modal — rendered at phone-frame level (z-[60], above drawer z-50) */}
         {supportModalOpen && (
           <ComingSoonModal onClose={closeSupportModal} />
+        )}
+
+        {/* Notification Coming Soon Modal — rendered at phone-frame level (z-[60], above drawer z-50) */}
+        {notificationModalOpen && (
+          <ComingSoonModal
+            onClose={closeNotificationModal}
+            title="알림 기능 준비 중이에요"
+          />
         )}
 
         {/* Open In Browser Modal (인앱 브라우저 감지 시 안내) — rendered at phone-frame level (z-[60], above drawer z-50) */}
