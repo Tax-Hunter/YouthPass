@@ -38,7 +38,7 @@ function HeaderRow({
       />
       {/* Content layer: 실제 아이콘/로고 — translateY로 축소된 chrome 안에 재중앙정렬 */}
       <div
-        className="absolute inset-0 flex items-center justify-between px-5"
+        className="absolute inset-0 flex items-center justify-between px-screen"
         style={{
           transform: `translateY(${isScrolled ? -HEADER_CONTENT_SHIFT_REM : 0}rem)`,
           transition: "transform 200ms ease-out",
