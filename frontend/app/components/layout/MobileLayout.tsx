@@ -138,7 +138,7 @@ export default function MobileLayout({ children }: Props) {
 
   return (
     <div className="min-h-dvh bg-white sm:bg-slate-950 flex items-center justify-center p-0 font-sans select-none relative overflow-hidden overscroll-none">
-      <div className="w-full sm:w-[375px] h-dvh overflow-hidden shadow-[0_24px_60px_rgba(0,0,0,0.8)] border border-slate-900 sm:border-white/10 relative bg-white flex flex-col overscroll-none">
+      <div className="w-full sm:w-[375px] h-dvh overflow-hidden sm:shadow-[0_24px_60px_rgba(0,0,0,0.8)] sm:border sm:border-white/10 relative bg-white flex flex-col overscroll-none">
         <SplashScreen visible={splashVisible} />
 
         {/* Unified sticky header componentized and used only once */}
