@@ -7,6 +7,7 @@ import { useAuthStore } from "@/lib/store/authStore";
 import { useFilterStore } from "@/lib/store/filterStore";
 import { usePolicyDetail } from "@/lib/api/policy";
 import Badge from "@/app/components/ui/Badge";
+import ScreenContent, { ScreenBleed } from "@/app/components/layout/ScreenContent";
 
 interface ScreenProps {
   onNavigate?: (screenId: string) => void;
@@ -83,7 +84,7 @@ export default function PolicyDetailScreen({ onNavigate }: ScreenProps) {
 
   if (error) {
     return (
-      <div className="flex flex-col h-full bg-white items-center justify-center gap-3 px-8">
+      <div className="flex flex-col h-full bg-white items-center justify-center gap-3 px-screen">
         <svg className="w-10 h-10 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
         </svg>
@@ -99,10 +100,10 @@ export default function PolicyDetailScreen({ onNavigate }: ScreenProps) {
     <div className="h-full bg-white font-sans select-none flex flex-col">
 
       {/* ── Content (scrollable) ── */}
-      <div className="flex-1 min-h-0 overflow-y-auto scroll-stable pt-header">
+      <ScreenContent>
 
         {/* ── Title block ── */}
-        <div className="px-screen pt-5 pb-4 border-b border-slate-100">
+        <ScreenBleed className="px-screen pt-5 pb-4 border-b border-slate-100">
           <div className="flex items-start justify-between gap-3">
             {isLoading ? (
               <div className="space-y-2 animate-pulse flex-1">
@@ -120,10 +121,10 @@ export default function PolicyDetailScreen({ onNavigate }: ScreenProps) {
               : <Badge className="shrink-0" variant={dDayVariant()} size="md">{policy?.dday ?? "-"}</Badge>
             }
           </div>
-        </div>
+        </ScreenBleed>
 
         {/* ── Meta row ── */}
-        <div className="px-screen py-4 border-b border-slate-100 space-y-3">
+        <ScreenBleed className="px-screen py-4 border-b border-slate-100 space-y-3">
 
           {isLoading ? (
             <div className="flex gap-2 animate-pulse">
@@ -206,10 +207,10 @@ export default function PolicyDetailScreen({ onNavigate }: ScreenProps) {
               ))}
             </div>
           )}
-        </div>
+        </ScreenBleed>
 
         {/* ── 지원 대상 + 혜택 내용 ── */}
-        <div className="px-screen py-5 space-y-3">
+        <div className="py-5 space-y-3">
           <Section
             title="지원 대상"
             accent="blue"
@@ -257,7 +258,7 @@ export default function PolicyDetailScreen({ onNavigate }: ScreenProps) {
             )}
           </Section>
         </div>
-      </div>
+      </ScreenContent>
 
       {/* ── Bottom action bar (always pinned to screen bottom) ── */}
       <div className="shrink-0 px-screen pt-4 border-t border-slate-100 bg-white flex items-center gap-3 pb-safe z-10">

@@ -38,7 +38,7 @@ function HeaderRow({
       />
       {/* Content layer: 실제 아이콘/로고 — translateY로 축소된 chrome 안에 재중앙정렬 */}
       <div
-        className="absolute inset-0 flex items-center justify-between px-5"
+        className="absolute inset-0 flex items-center justify-between px-screen"
         style={{
           transform: `translateY(${isScrolled ? -HEADER_CONTENT_SHIFT_REM : 0}rem)`,
           transition: "transform 200ms ease-out",
@@ -160,7 +160,7 @@ export default function Header({
   if (isLocationHeader) {
     return (
       <header
-        className="w-full absolute top-0 left-0 right-0 z-30 shrink-0 box-border select-none"
+        className="w-full absolute top-0 left-0 right-0 z-30 shrink-0 box-border select-none bg-white"
         style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}
       >
         <HeaderRow isScrolled={isScrolled}>
@@ -206,7 +206,7 @@ export default function Header({
 
   return (
     <header
-      className="w-full absolute top-0 left-0 right-0 z-30 shrink-0 box-border select-none"
+      className="w-full absolute top-0 left-0 right-0 z-30 shrink-0 box-border select-none bg-white"
       style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}
     >
       <HeaderRow isScrolled={isScrolled}>

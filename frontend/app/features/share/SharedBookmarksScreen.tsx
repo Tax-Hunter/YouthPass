@@ -3,6 +3,7 @@
 import React, { useEffect } from "react";
 import { useSharedPolicies } from "@/lib/api/share";
 import PolicyCard from "@/app/components/ui/PolicyCard";
+import ScreenContent, { ScreenBleed } from "@/app/components/layout/ScreenContent";
 
 interface ScreenProps {
   code: string;
@@ -22,14 +23,14 @@ export default function SharedBookmarksScreen({ code, onNavigate }: ScreenProps)
   };
 
   return (
-    <div className="flex flex-col h-full bg-white text-slate-800 font-sans select-none overflow-y-auto scroll-stable pt-header">
-      <div className="px-screen pt-5 pb-3 shrink-0">
+    <ScreenContent className="h-full flex flex-col bg-white text-slate-800 font-sans select-none">
+      <div className="pt-5 pb-3 shrink-0">
         <h2 className="text-[16px] font-bold text-slate-900">공유 목록</h2>
       </div>
 
-      <div className="border-t border-slate-50" />
+      <ScreenBleed className="border-t border-slate-50" />
 
-      <div className="flex-1 px-screen py-5 space-y-4">
+      <div className="flex-1 py-5 space-y-4">
         {isLoading ? (
           Array.from({ length: 3 }).map((_, i) => (
             <div key={i} className="p-5 bg-white border border-slate-100 rounded-2xl animate-pulse">
@@ -65,6 +66,6 @@ export default function SharedBookmarksScreen({ code, onNavigate }: ScreenProps)
           ))
         )}
       </div>
-    </div>
+    </ScreenContent>
   );
 }
