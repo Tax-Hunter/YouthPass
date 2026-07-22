@@ -12,6 +12,7 @@ import PolicyCard from "@/app/components/ui/PolicyCard";
 import PromoBanner from "@/app/components/ui/PromoBanner";
 import HeroCarousel from "@/app/components/ui/HeroCarousel";
 import HeroBannerSlide from "@/app/components/ui/HeroBannerSlide";
+import ScreenContent, { ScreenBleed } from "@/app/components/layout/ScreenContent";
 
 // 설문 오버레이는 열 때만 필요 — 랜딩 화면(첫 페인트) 번들에서 제외
 const SurveyScreen = dynamic(() => import("@/app/features/auth/SurveyScreen"));
@@ -51,8 +52,9 @@ export default function HomeScreen({ onNavigate }: ScreenProps) {
 
   return (
     <div className="flex flex-col h-full bg-slate-50 text-slate-800 font-sans select-none relative overflow-hidden">
-      <div className="flex-1 min-h-0 overflow-y-auto pt-header scroll-stable">
+      <ScreenContent>
       {/* Hero Banner Carousel */}
+      <ScreenBleed>
       <HeroCarousel
         slides={[
           {
@@ -105,9 +107,11 @@ export default function HomeScreen({ onNavigate }: ScreenProps) {
           },
         ]}
       />
+      </ScreenBleed>
 
       {/* Category Grid Section */}
-      <section className="px-screen py-6 bg-white shrink-0 grid grid-cols-4 gap-3 border-b border-slate-100">
+      <ScreenBleed className="py-6 bg-white shrink-0 border-b border-slate-100">
+      <section className="px-screen grid grid-cols-4 gap-3">
         {[
           { label: "주거", icon: "home", color: "bg-blue-50 text-blue-600" },
           { label: "금융", icon: "cash", color: "bg-teal-50 text-teal-600" },
@@ -153,9 +157,10 @@ export default function HomeScreen({ onNavigate }: ScreenProps) {
           </button>
         ))}
       </section>
+      </ScreenBleed>
 
       {/* Policy List Section */}
-      <section className="px-screen py-6 flex-1">
+      <section className="py-6 flex-1">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-base font-bold text-slate-900">마감 임박 정책</h3>
           <button
@@ -243,7 +248,7 @@ export default function HomeScreen({ onNavigate }: ScreenProps) {
           }
         />
       </section>
-      </div>{/* /scroll wrapper */}
+      </ScreenContent>{/* /scroll wrapper */}
 
       {isSurveyOpen && (
         <div className="absolute inset-0 z-50 bg-white">

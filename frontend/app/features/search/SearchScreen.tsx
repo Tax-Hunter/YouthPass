@@ -16,6 +16,7 @@ import { cityToSido } from "@/lib/sidoMap";
 import { employmentToJobCodes } from "@/lib/jobCodeMap";
 import PolicyCard from "@/app/components/ui/PolicyCard";
 import FloatingFilterButton from "@/app/components/ui/FloatingFilterButton";
+import ScreenContent from "@/app/components/layout/ScreenContent";
 
 // 필터/설문 오버레이는 열 때만 필요 — 정책 목록 초기 로드 번들에서 제외
 const FilterScreen = dynamic(() => import("@/app/features/filter/FilterScreen"));
@@ -175,10 +176,10 @@ export default function SearchScreen({ onNavigate }: ScreenProps) {
 
   return (
     <div className="flex flex-col h-full bg-white text-slate-800 font-sans select-none overflow-hidden relative">
-      <div className="flex-1 min-h-0 overflow-y-auto pt-header pb-24">
+      <ScreenContent bottomPadding="24">
         {/* 설문 미실시 시에만 노출되는 설문 유도 배너 */}
         {!surveyCompleted && _hasHydrated && (
-          <div className="px-screen pt-4">
+          <div className="pt-4">
             <button
               onClick={openSurvey}
               className="w-full flex items-center justify-between px-4 py-3 bg-blue-50 border border-blue-200 rounded-2xl text-left active:scale-[0.99] transition-all"
@@ -209,7 +210,7 @@ export default function SearchScreen({ onNavigate }: ScreenProps) {
         )}
 
         {/* 구글폼 설문하기 배너 — 기존 설문 완료 여부와 무관하게 항상 노출 */}
-        <div className="px-screen pt-2">
+        <div className="pt-2">
           <button
             onClick={openGoogleForm}
             className="w-full flex items-center justify-between px-4 py-3 bg-indigo-50 border border-indigo-200 rounded-2xl text-left active:scale-[0.99] transition-all"
@@ -242,7 +243,7 @@ export default function SearchScreen({ onNavigate }: ScreenProps) {
         {(recentSearches.length > 0 || isSearchOpen) && (
           <div className="relative min-h-15.5 shrink-0">
             {recentSearches.length > 0 && (
-              <div className="px-screen pt-5">
+              <div className="pt-5">
                 <div className="flex items-center justify-between mb-3">
                   <span className="text-xs font-bold text-slate-800">
                     최근 검색
@@ -271,7 +272,7 @@ export default function SearchScreen({ onNavigate }: ScreenProps) {
             )}
 
             {isSearchOpen && (
-              <div className="absolute inset-0 z-20 bg-white flex items-center px-screen pt-5 pb-2">
+              <div className="absolute inset-0 z-20 bg-white flex items-center pt-5 pb-2">
                 <form onSubmit={handleSearchSubmit} className="relative w-full">
                   <input
                     ref={inputRef}
@@ -307,7 +308,7 @@ export default function SearchScreen({ onNavigate }: ScreenProps) {
         )}
 
         {/* Results */}
-        <div className="px-screen pt-6 pb-4 flex items-center justify-between">
+        <div className="pt-6 pb-4 flex items-center justify-between">
           <div className="flex items-center gap-1.5">
             <span className="text-xs font-bold text-slate-800">
               {effectiveQuery ? "검색 결과" : showClosedOnly ? "마감" : "전체"}
@@ -338,7 +339,7 @@ export default function SearchScreen({ onNavigate }: ScreenProps) {
           </button>
         </div>
 
-        <div className="px-screen py-4 space-y-5">
+        <div className="py-4 space-y-5">
           {showSkeleton ? (
             Array.from({ length: 3 }).map((_, i) => (
               <div
@@ -386,7 +387,7 @@ export default function SearchScreen({ onNavigate }: ScreenProps) {
             </div>
           )}
         </div>
-      </div>
+      </ScreenContent>
 
       <FloatingFilterButton
         onClick={() => setIsFilterOpen(true)}
