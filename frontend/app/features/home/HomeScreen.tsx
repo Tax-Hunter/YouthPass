@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { useBookmarkStore } from "@/lib/store/bookmarkStore";
 import { useAuthStore } from "@/lib/store/authStore";
@@ -11,7 +12,9 @@ import PolicyCard from "@/app/components/ui/PolicyCard";
 import PromoBanner from "@/app/components/ui/PromoBanner";
 import HeroCarousel from "@/app/components/ui/HeroCarousel";
 import HeroBannerSlide from "@/app/components/ui/HeroBannerSlide";
-import SurveyScreen from "@/app/features/auth/SurveyScreen";
+
+// 설문 오버레이는 열 때만 필요 — 랜딩 화면(첫 페인트) 번들에서 제외
+const SurveyScreen = dynamic(() => import("@/app/features/auth/SurveyScreen"));
 
 const FEEDBACK_SURVEY_URL = "https://forms.gle/EXpjA71nBUiNqaqJ7";
 

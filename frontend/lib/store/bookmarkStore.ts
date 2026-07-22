@@ -5,6 +5,7 @@ interface BookmarkState {
   bookmarks: string[]
   toggle: (id: string) => void
   isBookmarked: (id: string) => boolean
+  clear: () => void
 }
 
 export const useBookmarkStore = create<BookmarkState>()(
@@ -20,6 +21,9 @@ export const useBookmarkStore = create<BookmarkState>()(
         })),
 
       isBookmarked: (id) => get().bookmarks.includes(id),
+
+      // 로그아웃 시 사용 — 북마크는 계정별 데이터라 다음 로그인 사용자에게 이어지면 안 됨
+      clear: () => set({ bookmarks: [] }),
     }),
     {
       name: "youth-pass-bookmarks",

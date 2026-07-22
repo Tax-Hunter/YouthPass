@@ -38,6 +38,8 @@ export default function PolicyCard({
     <div
       onClick={onClick}
       onMouseEnter={() => prefetchPolicyDetail(queryClient, policy.plcy_no)}
+      // 모바일(터치)엔 hover가 없어 onMouseEnter prefetch가 동작하지 않으므로 터치 시작 시점에도 prefetch
+      onTouchStart={() => prefetchPolicyDetail(queryClient, policy.plcy_no)}
       className="p-5 bg-white border border-slate-100 rounded-2xl shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer group relative flex flex-col justify-between"
     >
       <div>

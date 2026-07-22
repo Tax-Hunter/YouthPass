@@ -196,6 +196,7 @@ export function useInfinitePolicyList(params: PolicyListParams | null) {
     enabled: params !== null && !USE_MOCK,
     staleTime: 5 * 60_000,
     gcTime: 30 * 60_000,
+    placeholderData: keepPreviousData,
   });
 
   if (USE_MOCK) {

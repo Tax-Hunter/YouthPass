@@ -204,7 +204,7 @@ export default function SurveyScreen({ onNavigate }: ScreenProps) {
     router.push(`/${screenId}`);
   };
   const { user, setUser } = useAuthStore();
-  const { saveFilters, filters } = useFilterStore();
+  const { applySurveyFilters, filters } = useFilterStore();
 
   const [step, setStep] = useState(1);
   // filters.age는 이미 -1 변환된 만 나이로 저장돼 있으므로, 사용자가 입력하는 체감 나이 표시값으로
@@ -280,7 +280,7 @@ export default function SurveyScreen({ onNavigate }: ScreenProps) {
 
     const manAge = toManAge(Number(age));
 
-    saveFilters({
+    applySurveyFilters({
       ...filters,
       city,
       categories: selectedCategories,
