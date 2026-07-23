@@ -12,6 +12,7 @@ import { useInfiniteScrollSentinel } from "@/lib/useInfiniteScrollSentinel";
 import { useFilterStore } from "@/lib/store/filterStore";
 import { useUiStore } from "@/lib/store/uiStore";
 import { useRecentSearchStore } from "@/lib/store/recentSearchStore";
+import { useScrollPositionStore } from "@/lib/store/scrollPositionStore";
 import { cityToSido } from "@/lib/sidoMap";
 import { employmentToJobCodes } from "@/lib/jobCodeMap";
 import PolicyCard from "@/app/components/ui/PolicyCard";
@@ -44,6 +45,9 @@ export default function SearchScreen({ onNavigate }: ScreenProps) {
   const [isSurveyOpen, setIsSurveyOpen] = useState(false);
   const [showClosedOnly, setShowClosedOnly] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const setScrollPosition = useScrollPositionStore((s) => s.setScrollPosition);
+  const getScrollPosition = useScrollPositionStore((s) => s.getScrollPosition);
   const { toggle: toggleBookmark, isBookmarked } = useBookmarkStore();
   const { filters, filterApplied, surveyAgeActive, _hasHydrated } =
     useFilterStore();
@@ -146,6 +150,34 @@ export default function SearchScreen({ onNavigate }: ScreenProps) {
 
   const showSkeleton = !_hasHydrated || isLoading;
 
+  // 검색어(또는 전체 목록)별로 스크롤 위치를 구분 저장 — 키가 바뀌면 새 검색으로 간주해
+  // 자연스럽게 처음부터 시작하고, 같은 키로 돌아오면(뒤로가기) 마지막 위치를 복원
+  const scrollKey = `search:${effectiveQuery || "__all__"}`;
+
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    let ticking = false;
+    const handleScroll = () => {
+      if (ticking) return;
+      ticking = true;
+      requestAnimationFrame(() => {
+        setScrollPosition(scrollKey, el.scrollTop);
+        ticking = false;
+      });
+    };
+    el.addEventListener("scroll", handleScroll, { passive: true });
+    return () => el.removeEventListener("scroll", handleScroll);
+  }, [scrollKey, setScrollPosition]);
+
+  useEffect(() => {
+    if (showSkeleton) return;
+    const el = scrollRef.current;
+    if (!el) return;
+    const saved = getScrollPosition(scrollKey);
+    if (saved) el.scrollTop = saved;
+  }, [showSkeleton, scrollKey, getScrollPosition]);
+
   const closedFilteredItems = showClosedOnly
     ? items.filter((p) => p.dday === "마감")
     : items;
@@ -181,7 +213,7 @@ export default function SearchScreen({ onNavigate }: ScreenProps) {
 
   return (
     <div className="flex flex-col h-full bg-white text-slate-800 font-sans select-none overflow-hidden relative">
-      <ScreenContent bottomPadding="24">
+      <ScreenContent ref={scrollRef} bottomPadding="24">
         {/* 설문 미실시 시에만 노출되는 설문 유도 배너 */}
         {!surveyCompleted && _hasHydrated && (
           <div className="pt-4">
