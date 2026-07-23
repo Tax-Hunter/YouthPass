@@ -1,12 +1,12 @@
 import { useQuery, useInfiniteQuery, keepPreviousData, type QueryClient } from "@tanstack/react-query";
 import { mockDetail, MOCK_CARDS } from "./mock";
-import { tokenStorage } from "@/lib/tokenStorage";
+import { useAuthStore } from "@/lib/store/authStore";
 
 const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK === "true";
 
 // 로그인 상태면 토큰을 실어 보내 sort=recommended 등 개인화 정렬이 동작하게 함(비로그인도 정상 동작)
 const fetcher = (url: string, signal?: AbortSignal) => {
-  const token = tokenStorage.getAccessToken();
+  const token = useAuthStore.getState().accessToken;
   return fetch(url, {
     signal,
     ...(token && { headers: { Authorization: `Bearer ${token}` } }),

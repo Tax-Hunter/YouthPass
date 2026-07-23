@@ -2,7 +2,6 @@
 
 import { Suspense, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { tokenStorage } from "@/lib/tokenStorage";
 
 function CallbackHandler() {
   const router = useRouter();
@@ -10,16 +9,16 @@ function CallbackHandler() {
 
   useEffect(() => {
     const accessToken = searchParams.get("access_token");
-    const refreshToken = searchParams.get("refresh_token");
     const isNewUser = searchParams.get("is_new_user") === "true";
 
-    if (!accessToken || !refreshToken) {
+    if (!accessToken) {
       router.replace("/login");
       return;
     }
 
-    tokenStorage.setTokens(accessToken, refreshToken);
-    // 하드 네비게이션으로 AuthContext 재초기화 (로그인 상태 즉시 반영)
+    // access_token은 메모리 상태라 하드 네비게이션 시 어차피 초기화됨 —
+    // 다음 페이지의 authStore.initAuth()가 HttpOnly 쿠키로 세션을 복구하므로 여기서 저장하지 않는다.
+    // 하드 네비게이션으로 URL의 access_token을 히스토리에서 제거
     window.location.href = isNewUser ? "/survey" : "/home";
   }, [router, searchParams]);
 

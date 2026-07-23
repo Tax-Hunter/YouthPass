@@ -19,29 +19,32 @@ interface ScreenContentProps {
  * 줄여버려서, ScreenBleed의 음수 마진(-mx-6)으로 상쇄할 수 없는 우측 간격을
  * 만든다(자세한 경위는 workflow/28_fix/phase4, phase5 문서 참고).
  */
-export default function ScreenContent({
-  children,
-  topPadding = "header",
-  bottomPadding = "none",
-  className = "",
-}: ScreenContentProps) {
-  const topClass =
-    topPadding === "header"
-      ? "pt-header"
-      : topPadding === "header-list"
-        ? "pt-header-list"
-        : "";
-  const bottomClass =
-    bottomPadding === "safe" ? "pb-safe" : bottomPadding === "24" ? "pb-24" : "";
+const ScreenContent = React.forwardRef<HTMLDivElement, ScreenContentProps>(
+  function ScreenContent(
+    { children, topPadding = "header", bottomPadding = "none", className = "" },
+    ref,
+  ) {
+    const topClass =
+      topPadding === "header"
+        ? "pt-header"
+        : topPadding === "header-list"
+          ? "pt-header-list"
+          : "";
+    const bottomClass =
+      bottomPadding === "safe" ? "pb-safe" : bottomPadding === "24" ? "pb-24" : "";
 
-  return (
-    <div
-      className={`flex-1 min-h-0 w-full overflow-y-auto px-screen ${topClass} ${bottomClass} ${className}`.trim()}
-    >
-      {children}
-    </div>
-  );
-}
+    return (
+      <div
+        ref={ref}
+        className={`flex-1 min-h-0 w-full overflow-y-auto px-screen ${topClass} ${bottomClass} ${className}`.trim()}
+      >
+        {children}
+      </div>
+    );
+  },
+);
+
+export default ScreenContent;
 
 /**
  * ScreenContent 내부에서 배경/구분선을 화면 끝까지 번지게(edge-to-edge) 해야 할 때

@@ -3,7 +3,6 @@
 import React, { useRef, useState } from "react";
 import { useAuthStore } from "@/lib/store/authStore";
 import { fetchWithAuth } from "@/lib/fetchWithAuth";
-import { tokenStorage } from "@/lib/tokenStorage";
 
 interface EditProfileModalProps {
   onClose: () => void;
@@ -13,7 +12,7 @@ const NICKNAME_MIN = 2;
 const NICKNAME_MAX = 12;
 
 export default function EditProfileModal({ onClose }: EditProfileModalProps) {
-  const { user, setUser } = useAuthStore();
+  const { user, setUser, accessToken } = useAuthStore();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [nickname, setNickname] = useState(user?.nickname ?? "");
@@ -52,7 +51,7 @@ export default function EditProfileModal({ onClose }: EditProfileModalProps) {
           `${process.env.NEXT_PUBLIC_API_URL}/users/post/profile-image`,
           {
             method: "POST",
-            headers: { Authorization: `Bearer ${tokenStorage.getAccessToken()}` },
+            headers: { Authorization: `Bearer ${accessToken}` },
             body: formData,
           },
         );

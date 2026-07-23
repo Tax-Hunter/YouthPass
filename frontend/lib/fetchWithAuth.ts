@@ -1,27 +1,24 @@
-import { tokenStorage } from "./tokenStorage";
+import { useAuthStore } from "@/lib/store/authStore";
 
 const BASE = process.env.NEXT_PUBLIC_API_URL;
 
 let refreshPromise: Promise<boolean> | null = null;
 
 async function doRefresh(): Promise<boolean> {
-  const refreshToken = tokenStorage.getRefreshToken();
-  if (!refreshToken) return false;
   try {
     const res = await fetch(`${BASE}/auth/post/refresh`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ refresh_token: refreshToken }),
+      credentials: "include",
     });
     if (!res.ok) {
-      tokenStorage.clear();
+      useAuthStore.getState().setAccessToken(null);
       return false;
     }
     const { access_token } = await res.json();
-    tokenStorage.setTokens(access_token, refreshToken);
+    useAuthStore.getState().setAccessToken(access_token);
     return true;
   } catch {
-    tokenStorage.clear();
+    useAuthStore.getState().setAccessToken(null);
     return false;
   }
 }
@@ -40,13 +37,14 @@ export async function fetchWithAuth(
   url: string,
   init: RequestInit = {}
 ): Promise<Response> {
-  const token = tokenStorage.getAccessToken();
+  const token = useAuthStore.getState().accessToken;
   const authHeaders: HeadersInit = token
     ? { Authorization: `Bearer ${token}` }
     : {};
 
   const res = await fetch(url, {
     ...init,
+    credentials: "include",
     headers: { "Content-Type": "application/json", ...init.headers, ...authHeaders },
   });
 
@@ -55,9 +53,10 @@ export async function fetchWithAuth(
   const refreshed = await tryRefresh();
   if (!refreshed) return res;
 
-  const newToken = tokenStorage.getAccessToken();
+  const newToken = useAuthStore.getState().accessToken;
   return fetch(url, {
     ...init,
+    credentials: "include",
     headers: {
       "Content-Type": "application/json",
       ...init.headers,

@@ -5,7 +5,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 import httpx
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Cookie, Depends, HTTPException, Response, status
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 
@@ -16,9 +16,24 @@ from app.core.security import create_access_token, generate_refresh_token, hash_
 from app.db.session import get_db
 from app.db.models.refresh_token import RefreshToken
 from app.db.models.user import User
-from app.schemas.auth import AccessTokenResponse, RefreshRequest
+from app.schemas.auth import AccessTokenResponse
 
 router = APIRouter()
+
+REFRESH_TOKEN_COOKIE = "refresh_token"
+REFRESH_TOKEN_COOKIE_PATH = f"{settings.API_PREFIX}/auth"
+
+
+def _set_refresh_token_cookie(response: Response, raw_refresh_token: str) -> None:
+    response.set_cookie(
+        key=REFRESH_TOKEN_COOKIE,
+        value=raw_refresh_token,
+        httponly=True,
+        secure=settings.ENV != "dev",
+        samesite="none" if settings.ENV != "dev" else "lax",
+        path=REFRESH_TOKEN_COOKIE_PATH,
+        max_age=settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
+    )
 
 
 @router.get("/get/google-login")
@@ -100,19 +115,27 @@ def google_callback(code: str, state: str = "", db: Session = Depends(get_db)):
     ))
     db.commit()
 
-    # 5. 프론트엔드로 리다이렉트 (토큰 + 신규 여부)
+    # 5. 프론트엔드로 리다이렉트 (access_token만 쿼리로 전달, refresh_token은 HttpOnly 쿠키로 발급)
     redirect_url = (
         f"{frontend_url}/auth/callback"
         f"?access_token={access_token}"
-        f"&refresh_token={raw_refresh_token}"
         f"&is_new_user={str(is_new_user).lower()}"
     )
-    return RedirectResponse(url=redirect_url)
+    response = RedirectResponse(url=redirect_url)
+    _set_refresh_token_cookie(response, raw_refresh_token)
+    return response
 
 
 @router.post("/post/refresh", response_model=AccessTokenResponse)
-def refresh_access_token(body: RefreshRequest, db: Session = Depends(get_db)):
-    token_hash = hash_token(body.refresh_token)
+def refresh_access_token(
+    response: Response,
+    db: Session = Depends(get_db),
+    refresh_token: Optional[str] = Cookie(default=None),
+):
+    if refresh_token is None:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Refresh Token 쿠키가 없습니다.")
+
+    token_hash = hash_token(refresh_token)
     db_token = db.query(RefreshToken).filter(RefreshToken.token_hash == token_hash).first()
 
     if db_token is None:
@@ -123,12 +146,32 @@ def refresh_access_token(body: RefreshRequest, db: Session = Depends(get_db)):
         db.commit()
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="만료된 Refresh Token입니다.")
 
-    return AccessTokenResponse(access_token=create_access_token(str(db_token.user_id)))
+    # 토큰 회전: 기존 레코드 폐기 후 신규 발급 (재사용 탐지 대비)
+    user_id = db_token.user_id
+    db.delete(db_token)
+
+    new_raw_refresh_token = generate_refresh_token()
+    expires_at = datetime.now(timezone.utc) + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
+    db.add(RefreshToken(
+        user_id=user_id,
+        token_hash=hash_token(new_raw_refresh_token),
+        expires_at=expires_at,
+    ))
+    db.commit()
+
+    _set_refresh_token_cookie(response, new_raw_refresh_token)
+    return AccessTokenResponse(access_token=create_access_token(str(user_id)))
 
 
 @router.post("/post/logout", status_code=status.HTTP_204_NO_CONTENT)
-def logout(body: RefreshRequest, db: Session = Depends(get_db)):
-    db_token = db.query(RefreshToken).filter(RefreshToken.token_hash == hash_token(body.refresh_token)).first()
-    if db_token:
-        db.delete(db_token)
-        db.commit()
+def logout(
+    response: Response,
+    db: Session = Depends(get_db),
+    refresh_token: Optional[str] = Cookie(default=None),
+):
+    if refresh_token:
+        db_token = db.query(RefreshToken).filter(RefreshToken.token_hash == hash_token(refresh_token)).first()
+        if db_token:
+            db.delete(db_token)
+            db.commit()
+    response.delete_cookie(key=REFRESH_TOKEN_COOKIE, path=REFRESH_TOKEN_COOKIE_PATH)

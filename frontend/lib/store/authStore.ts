@@ -1,50 +1,48 @@
 import { create } from "zustand";
-import { tokenStorage } from "@/lib/tokenStorage";
 import { fetchWithAuth } from "@/lib/fetchWithAuth";
 import type { User } from "@/lib/types";
 import { useFilterStore, DEFAULT_FILTERS } from "@/lib/store/filterStore";
 
+const BASE = process.env.NEXT_PUBLIC_API_URL;
+
 interface AuthState {
   user: User | null;
+  accessToken: string | null;
   isLoading: boolean;
   setUser: (user: User | null) => void;
   clearUser: () => void;
+  setAccessToken: (accessToken: string | null) => void;
   initAuth: () => Promise<void>;
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
   user: null,
+  accessToken: null,
   isLoading: true,
 
   setUser: (user) => set({ user }),
 
-  clearUser: () => set({ user: null, isLoading: false }),
+  clearUser: () => set({ user: null, accessToken: null, isLoading: false }),
+
+  setAccessToken: (accessToken) => set({ accessToken }),
 
   initAuth: async () => {
-    const pendingToken = tokenStorage.getPendingLogout();
-    if (pendingToken) {
-      fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/post/logout`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ refresh_token: pendingToken }),
-      })
-        .then(() => tokenStorage.clearPendingLogout())
-        .catch(() => {});
-    }
-
-    const token = tokenStorage.getAccessToken();
-    if (!token) {
-      set({ isLoading: false });
-      return;
-    }
-
+    // refresh_token은 HttpOnly 쿠키로만 존재하므로, 부팅 시 항상 쿠키 기반으로 access token을 재발급받아 세션을 복구
     try {
-      const res = await fetchWithAuth(
-        `${process.env.NEXT_PUBLIC_API_URL}/users/get/me`,
-      );
+      const refreshRes = await fetch(`${BASE}/auth/post/refresh`, {
+        method: "POST",
+        credentials: "include",
+      });
+      if (!refreshRes.ok) {
+        set({ user: null, accessToken: null, isLoading: false });
+        return;
+      }
+      const { access_token } = await refreshRes.json();
+      set({ accessToken: access_token });
+
+      const res = await fetchWithAuth(`${BASE}/users/get/me`);
       if (!res.ok) {
-        tokenStorage.clear();
-        set({ user: null, isLoading: false });
+        set({ user: null, accessToken: null, isLoading: false });
         return;
       }
       const user = (await res.json()) as User;
@@ -67,7 +65,7 @@ export const useAuthStore = create<AuthState>((set) => ({
         });
       }
     } catch {
-      set({ user: null, isLoading: false });
+      set({ user: null, accessToken: null, isLoading: false });
     }
   },
 }));

@@ -44,9 +44,7 @@ export default function MobileLayout({ children }: Props) {
     showOpenInBrowserModal,
     closeOpenInBrowserModal,
     closeSearchInput,
-    bumpSearchVisit,
   } = useUiStore();
-  const prevPathnameRef = useRef(pathname);
   const contentRef = useRef<HTMLDivElement>(null);
   const { pullDistance, isRefreshing } = usePullToRefresh(contentRef);
 
@@ -89,12 +87,11 @@ export default function MobileLayout({ children }: Props) {
   useEffect(() => {
     if (pathname !== "/search") {
       closeSearchInput();
-    } else if (prevPathnameRef.current !== "/search") {
-      // 다른 화면에서 /search로 (재)진입한 시점 — 검색 화면을 항상 초기 상태로 리마운트
-      bumpSearchVisit();
     }
-    prevPathnameRef.current = pathname;
-  }, [pathname, closeSearchInput, bumpSearchVisit]);
+    // /search로 (재)진입할 때의 강제 리마운트(bumpSearchVisit)는 여기서 자동 호출하지 않는다 —
+    // 뒤로가기로 복귀하는 경우까지 리마운트시키면 검색어/스크롤 위치가 함께 초기화되므로,
+    // "새로 검색을 시작"하는 명확한 트리거(Header의 검색 아이콘 클릭)에서만 명시적으로 호출한다.
+  }, [pathname, closeSearchInput]);
 
   // Prefetch other static pages for smoother transitions
   useEffect(() => {
@@ -138,7 +135,7 @@ export default function MobileLayout({ children }: Props) {
 
   return (
     <div className="min-h-dvh bg-white sm:bg-slate-950 flex items-center justify-center p-0 font-sans select-none relative overflow-hidden overscroll-none">
-      <div className="w-full sm:w-[375px] h-dvh overflow-hidden shadow-[0_24px_60px_rgba(0,0,0,0.8)] border border-slate-900 sm:border-white/10 relative bg-white flex flex-col overscroll-none">
+      <div className="w-full sm:w-[375px] h-dvh overflow-hidden sm:shadow-[0_24px_60px_rgba(0,0,0,0.8)] sm:border sm:border-white/10 relative bg-white flex flex-col overscroll-none">
         <SplashScreen visible={splashVisible} />
 
         {/* Unified sticky header componentized and used only once */}
