@@ -76,6 +76,7 @@ export default function Header({
   const router = useRouter();
   const [isScrolled, setIsScrolled] = useState(false);
   const toggleSearchInput = useUiStore((s) => s.toggleSearchInput);
+  const bumpSearchVisit = useUiStore((s) => s.bumpSearchVisit);
 
   useEffect(() => {
     let lastScrollTop = 0;
@@ -245,11 +246,16 @@ export default function Header({
           {showRightActions && (
             <>
               <button
-                onClick={() =>
-                  currentScreen === "search"
-                    ? toggleSearchInput()
-                    : onNavigate?.("search")
-                }
+                onClick={() => {
+                  if (currentScreen === "search") {
+                    toggleSearchInput();
+                  } else {
+                    // 다른 화면에서 검색으로 새로 진입하는 경우에만 강제 리마운트 —
+                    // 뒤로가기로 /search에 복귀하는 경로는 여기를 타지 않아 검색어/스크롤 위치가 유지됨
+                    bumpSearchVisit();
+                    onNavigate?.("search");
+                  }
+                }}
                 onMouseEnter={() => {
                   router.prefetch("/search");
                 }}
