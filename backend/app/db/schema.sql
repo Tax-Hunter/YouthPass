@@ -132,3 +132,16 @@ CREATE TABLE IF NOT EXISTS refresh_tokens (
 );
 
 CREATE INDEX IF NOT EXISTS ix_refresh_tokens_user_id    ON refresh_tokens (user_id);
+
+-- ── policy_summary (정책 AI 요약 — Claude 배치 생성) ─────────
+-- policy 1:1 수직분할. source_hash != policy.content_hash면 재요약 대상(ingest.summarizer).
+CREATE TABLE IF NOT EXISTS policy_summary (
+    plcy_no      VARCHAR(30) PRIMARY KEY REFERENCES policy(plcy_no) ON DELETE CASCADE,
+    one_liner    VARCHAR(80) NOT NULL,
+    benefit      TEXT,
+    target       TEXT,
+    how_to_apply TEXT,
+    source_hash  VARCHAR(32) NOT NULL,
+    model        VARCHAR(40) NOT NULL,
+    generated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);

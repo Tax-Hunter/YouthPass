@@ -5,9 +5,10 @@ run.py — 수집 파이프라인 CLI 오케스트레이터 (유일한 실행 �
   collect   수집 → JSON 저장        (DB 미접속)
   verify    수집 → 정제 → 검증 리포트 (DB 미접속, 적재 안 함)
   dryrun    수집 → 정제 → 검증 → 적재 시뮬(ROLLBACK)
-  load      수집 → 정제 → 검증 → 실적재(COMMIT) → ES 재색인 → 캐시 무효화
+  load      수집 → 정제 → 검증 → 실적재(COMMIT) → ES 재색인 → AI 요약 → 캐시 무효화
   rehash    기존 DB content_hash 백필 (첫 load 전 1회, --dry-run 지원)
   reindex   DB 전량 ES 재색인 (수동 복구/부트스트랩, --dry-run 지원)
+  summarize AI 요약 증분 생성 (content_hash 기반 선별, --batch 백필/--dry-run 지원)
 
 dryrun/load가 강제하는 불변식(사람이 깨뜨릴 수 없게):
   · run_validation → assert_loadable  (FAIL 0일 때만 적재)
@@ -16,8 +17,9 @@ dryrun/load가 강제하는 불변식(사람이 깨뜨릴 수 없게):
   · dryrun/load는 own-session(session=None) → dry_run 롤백 보장
 
 종료코드: 0 성공 / 2 검증FAIL / 3 수집실패 / 4 설정오류 / 5 만료스킵(주의)
-         / 6 동시실행차단 / 7 ES색인실패(적재는 성공 — reindex로 수동 복구) / 1 기타
-  5·7 동시 발생 시 5 우선(데이터 이상신호 > 색인 stale) — 둘 다 stderr에는 항상 출력됨.
+         / 6 동시실행차단 / 7 ES색인실패(적재는 성공 — reindex로 수동 복구)
+         / 8 요약실패(적재는 성공 — summarize로 수동 복구) / 1 기타
+  동시 발생 시 5 > 7 > 8 우선(데이터 이상신호 > 색인 stale > 요약 stale) — 전부 stderr에는 항상 출력됨.
 
 사용: backend/ 에서  python -m ingest.run <mode> [옵션]
 예:   python -m ingest.run verify --limit 300
@@ -35,6 +37,7 @@ from ingest import (
     IngestEsIndexError,
     IngestFetchError,
     IngestLockError,
+    IngestSummaryError,
     IngestValidationError,
     advisory_lock,
     assert_loadable,
@@ -43,9 +46,11 @@ from ingest import (
     load,
     rehash_backfill,
     run_validation,
+    summarize_stale,
     transform_batch,
 )
-from ingest.config import MAX_PAGES, PAGE_SIZE
+from ingest.config import MAX_PAGES, PAGE_SIZE, SUMMARY_MAX_PER_RUN
+from ingest.summarizer import SummarizeReport, summary_enabled
 from app.api.routes.policy.cache import bump_policy_cache_version
 
 EXIT_OK = 0
@@ -56,6 +61,7 @@ EXIT_CONFIG = 4
 EXIT_EXPIRE_SKIPPED = 5
 EXIT_LOCKED = 6
 EXIT_ES_INDEX_FAILED = 7
+EXIT_SUMMARY_FAILED = 8
 
 
 def _meta_dict(meta) -> dict:
@@ -134,17 +140,36 @@ def _run_load(args, *, dry_run: bool) -> int:
                 print(f"⚠ ES 색인 실패 — 적재는 성공, 검색 인덱스만 stale: "
                       f"{type(e).__name__}: {e}", file=sys.stderr)
                 print("  수동 복구: python -m ingest.run reindex", file=sys.stderr)
+        # AI 요약: DB 커밋 확정 후 · 캐시 bump 전, 락 범위 안(수동 summarize와 경합 차단).
+        # content_hash 증분이라 변경분만 처리, 회당 상한(SUMMARY_MAX_PER_RUN)으로 시간·비용 bound
+        # — 잔여는 다음 회차가 자연 소화(drip backfill). ES 실패와 독립(요약은 ES 미색인).
+        # SUMMARY_API_KEY 미설정이면 skipped(무출력) — Redis/ES 미설정 관례와 동일.
+        sum_failed = False
+        if not dry_run:
+            try:
+                sum_report = summarize_stale(limit=SUMMARY_MAX_PER_RUN)
+                if not sum_report.skipped:
+                    print(f"⑦ {sum_report.summary()}")
+            except Exception as e:
+                # fail-soft — 적재·ES는 이미 확정, 요약만 stale(실패분은 다음 실행 자동 재시도).
+                sum_failed = True
+                print(f"⚠ AI 요약 실패 — 적재는 성공, 요약만 stale: "
+                      f"{type(e).__name__}: {e}", file=sys.stderr)
+                print("  수동 복구: python -m ingest.run summarize", file=sys.stderr)
     # 실적재 성공 = 조회 데이터 변경 → 정책 응답 캐시 전체 무효화(버전 bump).
-    # ES 색인 실패여도 DB는 갱신됐으므로 bump 대상(PG 경로·hydration이 신선한 데이터 제공).
+    # ES 색인·AI 요약 실패여도 DB는 갱신됐으므로 bump 대상(PG 경로·hydration이 신선한 데이터 제공).
     # 만료 스킵이어도 UPSERT는 커밋됐으므로 bump 대상. REDIS_URL 미설정이면 무동작(False).
     if not dry_run and bump_policy_cache_version():
-        print("⑦ 정책 응답 캐시 무효화(버전 bump)")
-    # 만료율 캡 트립(reason 존재) = 부분수집/빈입력 의심 이상신호 → 운영자 분기용 종료코드
+        print("⑧ 정책 응답 캐시 무효화(버전 bump)")
+    # 만료율 캡 트립(reason 존재) = 부분수집/빈입력 의심 이상신호 → 운영자 분기용 종료코드.
+    # 동시 발생 시 5 > 7 > 8 (데이터 이상신호 > 색인 stale > 요약 stale) — 전부 stderr에는 출력됨.
     if result.expire_skip_reason:
         print(f"⚠ 만료 스킵(이상): {result.expire_skip_reason}", file=sys.stderr)
         return EXIT_EXPIRE_SKIPPED
     if es_failed:
         return EXIT_ES_INDEX_FAILED
+    if sum_failed:
+        return EXIT_SUMMARY_FAILED
     return EXIT_OK
 
 
@@ -179,6 +204,28 @@ def cmd_reindex(args) -> int:
         return EXIT_CONFIG
     # 실제 재색인으로 alias가 새 인덱스로 바뀌었으므로 캐시 무효화 — 없으면 구 결과가 KST 자정까지 잔존.
     if not args.dry_run and bump_policy_cache_version():
+        print("정책 응답 캐시 무효화(버전 bump)")
+    return EXIT_OK
+
+
+def cmd_summarize(args) -> int:
+    # 키 미설정이면 락(DB 접속)조차 잡지 않는다 — 기능 비활성은 무자원 경로.
+    # 수동 실행에서 키 미설정은 사용자 의도와 어긋난 상태 — load 훅과 달리 설정 오류로 승격 (reindex 관례)
+    if not summary_enabled():
+        print(SummarizeReport(skipped=True).summary())
+        print("summarize는 SUMMARY_API_KEY 설정이 필요합니다 (backend/.env 또는 Railway 변수).",
+              file=sys.stderr)
+        return EXIT_CONFIG
+    # dry-run은 읽기 전용(선별 count 1건) — 락 불필요 (reindex --dry-run 관례).
+    if args.dry_run:
+        report = summarize_stale(limit=args.limit, dry_run=True)
+    else:
+        # load 크론과의 경합 차단 — 같은 advisory lock 공유 (rehash 관례).
+        with advisory_lock():
+            report = summarize_stale(limit=args.limit, batch=args.batch)
+    print(report.summary())
+    # 요약 갱신 = 카드/상세 응답 변경 → 캐시 무효화. REDIS_URL 미설정이면 무동작(False).
+    if not args.dry_run and report.summarized and bump_policy_cache_version():
         print("정책 응답 캐시 무효화(버전 bump)")
     return EXIT_OK
 
@@ -220,6 +267,14 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--dry-run", action="store_true", help="ES 미접속 — 문서 변환·건수 확인만")
     p.set_defaults(func=cmd_reindex)
 
+    p = sub.add_parser("summarize", help="AI 요약 증분 생성(content_hash 기반 선별)")
+    p.add_argument("--limit", type=int, default=None,
+                   help=f"처리 상한(기본: 동기 {SUMMARY_MAX_PER_RUN}건, --batch는 전량)")
+    p.add_argument("--batch", action="store_true",
+                   help="Message Batches API 사용(백필용, 토큰 비용 50%% 할인)")
+    p.add_argument("--dry-run", action="store_true", help="선별 건수만 확인(API 호출·쓰기 없음)")
+    p.set_defaults(func=cmd_summarize)
+
     return parser
 
 
@@ -243,6 +298,10 @@ def main(argv=None) -> int:
         # 수동 reindex의 ES 통신 실패 경로 (load 훅은 _run_load가 자체 처리 — fail-soft)
         print(f"ES 색인 실패: {e}", file=sys.stderr)
         return EXIT_ES_INDEX_FAILED
+    except IngestSummaryError as e:
+        # 수동 summarize의 전체 실패 경로 (load 훅은 _run_load가 자체 처리 — fail-soft)
+        print(f"AI 요약 실패: {e}", file=sys.stderr)
+        return EXIT_SUMMARY_FAILED
 
 
 if __name__ == "__main__":

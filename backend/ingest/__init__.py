@@ -8,11 +8,17 @@ ingest — 청년정책 수집 ETL 파이프라인.
 아래 __all__ 공개 API만 사용한다. 운영 상수는 ingest.config, 어휘는 ingest.vocab 참조.
 """
 from ingest.client import FetchMeta, fetch_all_policies
-from ingest.errors import IngestConfigError, IngestEsIndexError, IngestFetchError
+from ingest.errors import (
+    IngestConfigError,
+    IngestEsIndexError,
+    IngestFetchError,
+    IngestSummaryError,
+)
 from ingest.es_indexer import EsIndexReport, es_reindex
 from ingest.hashing import classify_change, content_hash
 from ingest.loader import LoadReport, RehashReport, load, rehash_backfill
 from ingest.lock import IngestLockError, advisory_lock
+from ingest.summarizer import SummarizeReport, summarize_stale
 from ingest.transform import transform_batch, transform_item
 from ingest.validate import (
     IngestValidationError,
@@ -34,10 +40,13 @@ __all__ = [
     "load", "LoadReport",
     # ⑥ ES 재색인(적재 성공 후 전량 색인 + alias 스왑)
     "es_reindex", "EsIndexReport",
+    # ⑦ AI 요약(적재 성공 후 증분 생성 — content_hash 기반)
+    "summarize_stale", "SummarizeReport",
     # 백필(첫 실적재 전 content_hash 재계산)
     "rehash_backfill", "RehashReport",
     # 동시실행 방지
     "advisory_lock", "IngestLockError",
     # 예외 계층
     "IngestConfigError", "IngestFetchError", "IngestValidationError", "IngestEsIndexError",
+    "IngestSummaryError",
 ]

@@ -30,3 +30,14 @@ class IngestEsIndexError(Exception):
     def __init__(self, message, *, index_name=None):
         super().__init__(message)
         self.index_name = index_name     # 만들다 실패한 물리 인덱스 이름
+
+
+class IngestSummaryError(Exception):
+    """AI 요약 생성 전체 실패(배치 제출/폴링 상한 등) — DB 적재와 무관하므로 fail-soft 대상.
+
+    항목별 실패는 이 예외가 아니라 SummarizeReport.failed로 집계된다(다음 실행 자동 재시도).
+    """
+
+    def __init__(self, message, *, batch_id=None):
+        super().__init__(message)
+        self.batch_id = batch_id         # 실패한 Message Batch ID (배치 모드일 때)

@@ -51,13 +51,22 @@ class Settings(BaseSettings):
     R2_BUCKET_NAME: str = Field(default="", description="R2 버킷 이름")
     R2_PUBLIC_BASE_URL: str = Field(default="", description="R2 버킷에 연결된 퍼블릭 도메인 (업로드 결과 URL 조합에 사용)")
 
+    # 빈값이면 AI 요약 생성(ingest summarize) 비활성 — 서빙은 policy_summary 테이블만
+    # 공급자는 SUMMARY_MODEL 프리픽스로 판별(gemini-*=Google, claude-*=Anthropic) — 키는 하나만
+    SUMMARY_API_KEY: str = Field(default="", description="요약 생성 LLM API 키 (SUMMARY_MODEL의 공급자용 — ingest 크론 전용)")
+    SUMMARY_MODEL: str = Field(default="gemini-2.5-flash", description="요약 생성 모델 ID (gemini-*=Google, claude-*=Anthropic)")
+    # 무료 티어 레이트리밋(5 RPM) 준수용 스로틀. 없으면 순차 호출만으로 분당 12회에 달해 429가 대량 발생
+    SUMMARY_RPM: int = Field(default=5, ge=0, description="요약 생성 분당 요청 상한 (0=무제한, 무료 티어는 5)")
+
     YOUTH_API_KEY: str = ""
     # 온통청년 getPlcy 현행 엔드포인트 (수집 파이프라인 client가 사용). 구 opi/empInt.do에서 교정.
     YOUTH_API_BASE_URL: str = "https://www.youthcenter.go.kr/go/ythip/getPlcy"
     # 신청 URL이 없을 때 폴백할 온통청년 정책 상세 페이지 베이스
     YTH_DETAIL_URL_BASE: str = "https://www.youthcenter.go.kr/youthPolicy/ythPlcyTotalSearch/ythPlcyDetail"
 
-    model_config = {"env_file": ".env", "case_sensitive": True}
+    # extra="ignore": .env에 Settings 필드가 아닌 키(과거 명칭·로컬 전용 변수)가 있어도
+    # 부팅이 죽지 않게 한다 (pydantic 2.13에서 미지 키가 extra_forbidden 에러로 승격되는 회귀 방어)
+    model_config = {"env_file": ".env", "case_sensitive": True, "extra": "ignore"}
 
 
 settings = Settings()

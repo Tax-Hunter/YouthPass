@@ -36,3 +36,20 @@ LOAD_LOCK_KEY = 0x59503130
 # ── ES 색인(es_indexer) ──
 # 검색용 타임아웃(settings.ES_TIMEOUT_S, 기본 2s)은 bulk 색인에 부족 — 색인 작업 전용 상한
 ES_INDEX_TIMEOUT_SEC = 30
+
+# ── AI 요약(summarizer) ──
+SUMMARY_MAX_PER_RUN = 300        # 동기 모드 회당 상한 — 크론 시간·비용 bound. 잔여는 다음 회차가
+                                 # 자연 소화(drip backfill)하므로 백필 없이도 수 회차면 전량 커버
+SUMMARY_MAX_TOKENS = 1024        # 요약 1건 출력 상한 (4필드 합산으로 충분)
+SUMMARY_INPUT_MAX_CHARS = 6000   # 정책 1건 입력 절단 상한 (비용 bound)
+SUMMARY_ONE_LINER_MAX = 80       # policy_summary.one_liner VARCHAR(80)과 일치 — 초과분 코드에서 절단
+SUMMARY_UPSERT_CHUNK = 50        # N건마다 UPSERT+commit — 중간 실패에도 처리분 보존
+SUMMARY_BATCH_POLL_SEC = 20      # Batch API 폴링 간격
+SUMMARY_BATCH_TIMEOUT_SEC = 7200 # Batch 완료 대기 상한(2h) — 초과 시 IngestSummaryError
+
+# 레이트리밋 대응 — 무료 티어(gemini 5 RPM)에서 429가 대량 발생하는 것을 막는다.
+# 실패해도 fail-soft(다음 실행 재시도)지만, 스로틀 없이는 회차당 절반 이상이 429로 밀려
+# 적체가 누적된다. 분당 상한은 settings.SUMMARY_RPM(환경변수)로 조절.
+SUMMARY_RETRY_COUNT = 3          # 429 재시도 횟수 (그 외 오류는 즉시 실패 처리)
+SUMMARY_RETRY_BACKOFF_SEC = 20   # 재시도 기본 대기(초) — 응답의 retryDelay가 있으면 그 값 우선
+SUMMARY_RETRY_MAX_WAIT_SEC = 90  # 회당 대기 상한 — 크론이 과도하게 길어지는 것 방지
