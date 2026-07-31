@@ -12,10 +12,10 @@ export default function SplashScreen({ visible }: Props) {
     >
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
-        src="/images/logo.png"
-        alt="청년패스 로고"
+        src="/images/mascot/splash.png"
+        alt="청패 로고"
         draggable={false}
-        className="w-40 h-auto object-contain select-none animate-fade-in"
+        className="w-56 h-auto object-contain select-none animate-fade-in"
       />
     </div>
   );

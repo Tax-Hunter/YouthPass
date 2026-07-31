@@ -32,35 +32,48 @@ export default function HeroCarousel({ slides, className = "" }: HeroCarouselPro
   const [transitionEnabled, setTransitionEnabled] = useState(true);
   const dragStartX = useRef<number | null>(null);
   const isDragging = useRef(false);
+  // 트랜지션이 끝나기 전에 다음 이동이 또 들어오면(빠른 연속 스와이프, 스와이프 도중 자동재생 타이머 발화 등)
+  // transitionend가 마지막 이동 건에 대해서만 한 번 발생해 trackIndex가 클론 범위 밖으로 누적될 수 있고,
+  // 그러면 실제 슬라이드가 하나도 안 보이는 빈 캐러셀 상태가 된다. 진행 중엔 새 이동을 막아 방지한다.
+  const isAnimating = useRef(false);
 
   const activeIndex = isLoopable
     ? (((trackIndex - offset) % slides.length) + slides.length) % slides.length
     : trackIndex;
 
   const goToNext = () => {
-    if (!isLoopable) return;
+    if (!isLoopable || isAnimating.current) return;
+    isAnimating.current = true;
     setTransitionEnabled(true);
     setTrackIndex((prev) => prev + 1);
   };
 
   const goToPrev = () => {
+    if (isAnimating.current) return;
     if (!isLoopable) {
+      isAnimating.current = true;
       setTransitionEnabled(true);
       setTrackIndex((prev) => Math.max(0, prev - 1));
       return;
     }
+    isAnimating.current = true;
     setTransitionEnabled(true);
     setTrackIndex((prev) => prev - 1);
   };
 
   const goTo = (index: number) => {
+    if (isAnimating.current) return;
     const clamped = Math.max(0, Math.min(index, slides.length - 1));
+    isAnimating.current = true;
     setTransitionEnabled(true);
     setTrackIndex(clamped + offset);
   };
 
   // 앞/뒤 복제 슬라이드까지 애니메이션이 끝나면, 애니메이션 없이 실제 슬라이드 위치로 되돌린다.
-  const handleTransitionEnd = () => {
+  const handleTransitionEnd = (e: React.TransitionEvent) => {
+    // 자식(버튼 hover/active 등)의 transitionend가 버블링되어 들어오는 걸 걸러낸다.
+    if (e.target !== e.currentTarget) return;
+    isAnimating.current = false;
     if (!isLoopable) return;
     if (trackIndex === trackSlides.length - 1) {
       setTransitionEnabled(false);
