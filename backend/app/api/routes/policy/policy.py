@@ -19,6 +19,11 @@ from app.schemas.policy import (
     ShareCreateRequest,
     ShareCreateResponse,
 )
+from app.api.routes.chuncheon.chuncheon import (
+    _get as _chuncheon_get,
+    _to_card as _chuncheon_to_card,
+    chuncheon_policy_exists,
+)
 from app.api.routes.policy.cache import policy_cache_get, policy_cache_set
 from app.api.routes.policy.constants import (
     APLY_PRD_CLOSED,
@@ -188,6 +193,7 @@ def _to_card(p: Policy, inq_cnt: Optional[int] = None) -> PolicyCard:
     return PolicyCard(
         plcy_no=p.plcy_no,
         plcy_nm=p.plcy_nm,
+        source="policy",
         category=p.category or CATEGORY_FALLBACK,
         keywords=p.keywords or [],
         region=_region_label(p.is_nationwide, p.region_sido),
@@ -648,22 +654,39 @@ def _generate_share_code(db: Session, attempts: int = 5) -> str:
 
 @router.post("/post/share", response_model=ShareCreateResponse)
 def create_bookmark_share(body: ShareCreateRequest, db: Session = Depends(get_db)):
-    # 로그인 여부 무관 — 클라이언트가 들고 있는 plcy_no 스냅샷을 그대로 저장
-    requested = _dedupe_preserve_order(body.plcy_nos)
-    existing = {
-        row[0]
-        for row in db.query(Policy.plcy_no).filter(Policy.plcy_no.in_(requested)).all()
-    }
-    plcy_nos = [p for p in requested if p in existing]
-    if not plcy_nos:
+    # 로그인 여부 무관 — 클라이언트가 들고 있는 (plcy_no, source) 스냅샷을 그대로 저장
+    requested = _dedupe_preserve_order([(item.plcy_no, item.source) for item in body.items])
+
+    policy_nos = [no for no, src in requested if src == "policy"]
+    chuncheon_nos = [no for no, src in requested if src == "chuncheon"]
+
+    valid_policy_nos = (
+        {row[0] for row in db.query(Policy.plcy_no).filter(Policy.plcy_no.in_(policy_nos)).all()}
+        if policy_nos
+        else set()
+    )
+    # 춘천은 로컬 DB가 아닌 외부 서비스 소스라 항목별로 존재 여부를 조회해야 한다.
+    # 외부 서비스 오류/미존재는 개별 항목만 무효 처리(요청 전체를 실패시키지 않음).
+    valid_chuncheon_nos = {no for no in chuncheon_nos if chuncheon_policy_exists(no)}
+
+    valid = [
+        (no, src)
+        for no, src in requested
+        if (src == "policy" and no in valid_policy_nos)
+        or (src == "chuncheon" and no in valid_chuncheon_nos)
+    ]
+    if not valid:
         raise HTTPException(status_code=400, detail="no valid policies to share")
+
+    plcy_nos = [no for no, _ in valid]
+    plcy_sources = [src for _, src in valid]
 
     now = datetime.now(timezone.utc)
 
     # 동일한 찜 목록(구성 무관, 순서 무관)에 대해 아직 만료되지 않은 공유 링크가 있으면 재사용 —
     # 매 클릭마다 새 URL이 생기지 않도록 함. 배열 순서 그대로 비교(==)하면 찜 해제/재추가로
     # 순서만 바뀌어도 다른 스냅샷으로 오판되므로, 정렬된 값으로 비교한다.
-    sorted_key = sorted(plcy_nos)
+    sorted_key = sorted(valid)
     same_length_candidates = (
         db.query(BookmarkShare)
         .filter(func.array_length(BookmarkShare.plcy_nos, 1) == len(plcy_nos))
@@ -672,7 +695,11 @@ def create_bookmark_share(body: ShareCreateRequest, db: Session = Depends(get_db
         .all()
     )
     existing_share = next(
-        (row for row in same_length_candidates if sorted(row.plcy_nos) == sorted_key),
+        (
+            row
+            for row in same_length_candidates
+            if sorted(zip(row.plcy_nos, row.plcy_sources)) == sorted_key
+        ),
         None,
     )
     if existing_share is not None:
@@ -683,6 +710,7 @@ def create_bookmark_share(body: ShareCreateRequest, db: Session = Depends(get_db
     share = BookmarkShare(
         share_code=_generate_share_code(db),
         plcy_nos=plcy_nos,
+        plcy_sources=plcy_sources,
         created_at=now,
         expires_at=now + timedelta(days=SHARE_LINK_EXPIRY_DAYS),
     )
@@ -704,15 +732,30 @@ def get_bookmark_share(share_code: str, db: Session = Depends(get_db)):
     if share.expires_at is not None and share.expires_at < datetime.now(timezone.utc):
         raise HTTPException(status_code=404, detail="share expired")
 
+    snapshot = list(zip(share.plcy_nos, share.plcy_sources))
+    policy_nos = [no for no, src in snapshot if src == "policy"]
+    chuncheon_nos = [no for no, src in snapshot if src == "chuncheon"]
+
     rows = (
         db.query(Policy, PolicyStats.inq_cnt)
         .outerjoin(PolicyStats, PolicyStats.plcy_no == Policy.plcy_no)
-        .filter(Policy.plcy_no.in_(share.plcy_nos), Policy.is_active.is_(True))
+        .filter(Policy.plcy_no.in_(policy_nos), Policy.is_active.is_(True))
         .all()
-    )
-    # 스냅샷 순서 보존 — 비활성화/삭제된 정책은 자연히 제외됨
-    by_no = {p.plcy_no: (p, inq_cnt) for p, inq_cnt in rows}
-    ordered = [by_no[no] for no in share.plcy_nos if no in by_no]
+    ) if policy_nos else []
+    policy_cards = {p.plcy_no: _to_card(p, inq_cnt) for p, inq_cnt in rows}
 
-    items = [_to_card(p, inq_cnt) for p, inq_cnt in ordered]
+    chuncheon_cards: dict[str, PolicyCard] = {}
+    for no in chuncheon_nos:
+        try:
+            chuncheon_cards[no] = _chuncheon_to_card(_chuncheon_get(f"/get/policy/{no}"))
+        except HTTPException:
+            # 외부 서비스에서 삭제/오류 — 목록에서 조용히 제외
+            continue
+
+    # 스냅샷 순서 보존 — 비활성화/삭제/외부조회 실패 항목은 자연히 제외됨
+    items = [
+        policy_cards[no] if src == "policy" else chuncheon_cards[no]
+        for no, src in snapshot
+        if (src == "policy" and no in policy_cards) or (src == "chuncheon" and no in chuncheon_cards)
+    ]
     return PolicyListResponse(total=len(items), page=1, size=len(items) or 1, items=items)
