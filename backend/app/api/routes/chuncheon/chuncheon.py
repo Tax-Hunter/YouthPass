@@ -34,10 +34,20 @@ def _get(path: str, params: Optional[dict] = None) -> dict:
     return resp.json()
 
 
+def chuncheon_policy_exists(plcy_no: str) -> bool:
+    # 공유 링크 생성/조회 시 개별 항목 검증용 — 존재하지 않거나 외부 서비스 오류면 무효로 취급
+    try:
+        _get(f"/get/policy/{plcy_no}")
+        return True
+    except HTTPException:
+        return False
+
+
 def _to_card(item: dict) -> PolicyCard:
     return PolicyCard(
         plcy_no=item["plcy_no"],
         plcy_nm=item["plcy_nm"],
+        source="chuncheon",
         category=item.get("category"),
         keywords=[],
         region=item.get("region_scope") or "춘천",
