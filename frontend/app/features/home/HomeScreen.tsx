@@ -9,9 +9,9 @@ import { useUiStore } from "@/lib/store/uiStore";
 import { useFilterStore, DEFAULT_FILTERS } from "@/lib/store/filterStore";
 import { usePolicyList, sortPoliciesByDeadline } from "@/lib/api/policy";
 import PolicyCard from "@/app/components/ui/PolicyCard";
-import PromoBanner from "@/app/components/ui/PromoBanner";
 import HeroCarousel from "@/app/components/ui/HeroCarousel";
 import HeroBannerSlide from "@/app/components/ui/HeroBannerSlide";
+import ChuncheonSkylineIllustration from "@/app/components/ui/ChuncheonSkylineIllustration";
 import ScreenContent, {
   ScreenBleed,
 } from "@/app/components/layout/ScreenContent";
@@ -64,13 +64,70 @@ export default function HomeScreen({ onNavigate }: ScreenProps) {
           <HeroCarousel
             slides={[
               {
+                id: "chuncheon-match",
+                content: (
+                  <HeroBannerSlide
+                    theme="indigo"
+                    illustration={<ChuncheonSkylineIllustration />}
+                    badge={
+                      <div className="flex items-center gap-1.5 text-[11px] font-semibold text-cyan-200">
+                        <svg
+                          viewBox="0 0 20 20"
+                          fill="none"
+                          className="h-3.5 w-3.5"
+                        >
+                          <path
+                            d="M10 18s6-5.5 6-10.2A6 6 0 004 7.8C4 12.5 10 18 10 18z"
+                            fill="currentColor"
+                          />
+                          <circle cx="10" cy="7.6" r="2.2" fill="#1D4ED8" />
+                        </svg>
+                        <span className="border-b border-cyan-200/60 pb-0.5">
+                          청년이 행복한 도시, 춘천
+                        </span>
+                      </div>
+                    }
+                    title={
+                      <>
+                        춘천 청년 정책,
+                        <br />
+                        <span className="text-cyan-200">
+                          1분 만에 찾아보세요
+                        </span>
+                      </>
+                    }
+                    subtitle={
+                      <>
+                        거주 정보와 관심 분야를 입력하면
+                        <br />
+                        지금 신청 가능한{" "}
+                        <span className="font-bold text-cyan-200">
+                          춘천시 지원사업
+                        </span>
+                        을 추천해드려요.
+                      </>
+                    }
+                    buttonLabel="맞춤 정책 찾기"
+                    onButtonClick={openSurvey}
+                  />
+                ),
+              },
+              {
                 id: "policy-match",
                 content: (
                   <HeroBannerSlide
                     theme="blue"
+                    badge={
+                      <div className="flex items-center gap-1.5 text-[11px] font-semibold text-white/90">
+                        <span>📦</span>
+                        <span className="border-b border-white/40 pb-0.5">
+                          아직 찾아가지 않은 혜택이 있습니다
+                        </span>
+                      </div>
+                    }
                     title={
                       <>
-                        내게 꼭 맞는 청년 정책,
+                        맞춤형 청년 정책
                         <br />
                         1분 만에 찾아보세요
                       </>
@@ -276,42 +333,6 @@ export default function HomeScreen({ onNavigate }: ScreenProps) {
               ))
             )}
           </div>
-
-          <PromoBanner
-            className="mt-6"
-            title={
-              <span className="text-[9px] font-bold text-blue-600 tracking-wider">
-                오늘의 정책 알림
-              </span>
-            }
-            subtitle={
-              <h5 className="text-[12.5px] font-bold text-slate-800 leading-tight">
-                이미 24,102명의 청년들이
-                <br />
-                자신의 혜택을 챙겼어요
-              </h5>
-            }
-            rightElement={
-              <div className="flex -space-x-2.5 overflow-hidden">
-                {[
-                  "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=64&q=80",
-                  "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=64&q=80",
-                  "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=64&q=80",
-                ].map((url, i) => (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    key={i}
-                    className="inline-block h-7 w-7 rounded-full ring-2 ring-white object-cover"
-                    src={url}
-                    alt=""
-                  />
-                ))}
-                <div className="inline-flex items-center justify-center h-7 w-7 rounded-full bg-blue-100 text-blue-600 ring-2 ring-white text-[9px] font-bold font-mono">
-                  +24k
-                </div>
-              </div>
-            }
-          />
         </section>
       </ScreenContent>
       {/* /scroll wrapper */}
