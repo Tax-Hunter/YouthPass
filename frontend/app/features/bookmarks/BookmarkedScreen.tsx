@@ -110,7 +110,7 @@ export default function BookmarkedScreen({ onNavigate }: ScreenProps) {
     if (shareCache && shareCache.key === bookmarksKey) {
       return shareCache.url;
     }
-    const url = await createShareUrl(bookmarks.map((b) => b.plcy_no));
+    const url = await createShareUrl(bookmarks);
     setShareCache({ key: bookmarksKey, url });
     return url;
   };
