@@ -5,6 +5,7 @@ import { useBookmarkStore } from "@/lib/store/bookmarkStore";
 import { useAuthStore } from "@/lib/store/authStore";
 import { usePolicyDetail } from "@/lib/api/policy";
 import type { PolicyCardData } from "@/lib/api/policy";
+import type { PolicySource } from "@/lib/types";
 import { createShareUrl } from "@/lib/api/share";
 import PolicyCard from "@/app/components/ui/PolicyCard";
 import OptionButton from "@/app/components/ui/OptionButton";
@@ -17,6 +18,7 @@ interface ScreenProps {
 
 function BookmarkedCard({
   plcy_no,
+  source,
   isBookmarked,
   onToggleBookmark,
   onClick,
@@ -25,19 +27,20 @@ function BookmarkedCard({
   showBookmark,
 }: {
   plcy_no: string;
+  source: PolicySource;
   isBookmarked: boolean;
   onToggleBookmark: () => void;
   onClick: () => void;
   activeTag: string;
-  onInvalid: (plcy_no: string) => void;
+  onInvalid: (plcy_no: string, source: PolicySource) => void;
   showBookmark: boolean;
 }) {
-  const { policy, error, isLoading } = usePolicyDetail(plcy_no);
+  const { policy, error, isLoading } = usePolicyDetail(plcy_no, source);
 
   // 존재하지 않는 정책(삭제되었거나 레거시 id)은 찜 목록에서 자동으로 제거한다.
   useEffect(() => {
-    if (error) onInvalid(plcy_no);
-  }, [error, plcy_no, onInvalid]);
+    if (error) onInvalid(plcy_no, source);
+  }, [error, plcy_no, source, onInvalid]);
 
   if (isLoading) {
     return (
@@ -75,6 +78,7 @@ function BookmarkedCard({
   return (
     <PolicyCard
       policy={card}
+      source={source}
       isBookmarked={isBookmarked}
       onToggleBookmark={onToggleBookmark}
       onClick={onClick}
@@ -97,21 +101,24 @@ export default function BookmarkedScreen({ onNavigate }: ScreenProps) {
   // 동일한 찜 목록으로 재클릭 시 서버 요청 없이 캐시된 URL을 재사용 — 백엔드 중복 방지 로직과
   // 무관하게 클라이언트 단에서도 불필요한 공유 링크 생성 요청을 막는 이중 안전장치
   const [shareCache, setShareCache] = useState<{ key: string; url: string } | null>(null);
-  const bookmarksKey = [...bookmarks].sort().join(",");
+  const bookmarksKey = [...bookmarks]
+    .map((b) => `${b.source}:${b.plcy_no}`)
+    .sort()
+    .join(",");
 
   const getShareUrl = async () => {
     if (shareCache && shareCache.key === bookmarksKey) {
       return shareCache.url;
     }
-    const url = await createShareUrl(bookmarks);
+    const url = await createShareUrl(bookmarks.map((b) => b.plcy_no));
     setShareCache({ key: bookmarksKey, url });
     return url;
   };
 
   const tags = ["전체", "#주거", "#금융", "#일자리", "#교육"];
 
-  const handleCardClick = (plcy_no: string) => {
-    onNavigate?.(`detail?id=${plcy_no}`);
+  const handleCardClick = (plcy_no: string, source: PolicySource) => {
+    onNavigate?.(`detail?id=${plcy_no}&src=${source}`);
   };
 
   return (
@@ -166,13 +173,14 @@ export default function BookmarkedScreen({ onNavigate }: ScreenProps) {
             </p>
           </div>
         ) : (
-          bookmarks.map((plcy_no) => (
+          bookmarks.map(({ plcy_no, source }) => (
             <BookmarkedCard
-              key={plcy_no}
+              key={`${source}:${plcy_no}`}
               plcy_no={plcy_no}
-              isBookmarked={!!user && isBookmarked(plcy_no)}
-              onToggleBookmark={() => toggleBookmark(plcy_no)}
-              onClick={() => handleCardClick(plcy_no)}
+              source={source}
+              isBookmarked={!!user && isBookmarked(plcy_no, source)}
+              onToggleBookmark={() => toggleBookmark(plcy_no, source)}
+              onClick={() => handleCardClick(plcy_no, source)}
               activeTag={activeTag}
               onInvalid={toggleBookmark}
               showBookmark={!!user}
