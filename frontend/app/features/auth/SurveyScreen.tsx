@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/lib/store/authStore";
 import { useFilterStore } from "@/lib/store/filterStore";
@@ -23,16 +24,26 @@ const STEP_MASCOTS: Record<number, string> = {
   5: "/images/mascot/survey-study.png",
 };
 
-// 스텝 footer의 "다음" 버튼 위에 붙는 마스코트 — 스텝마다 위치/스타일은 동일하고 이미지만 바뀜
+// 스크롤되는 콘텐츠 영역 맨 아래(버튼 바로 위)에 중앙 정렬로 들어가는 마스코트 — 스텝마다
+// 위치/스타일은 동일하고 이미지만 바뀜. footer(버튼)에 쌓거나 겹치지 않도록 콘텐츠의 일부로
+// 취급한다 — footer 안에 두면(고정 높이) 옵션이 가려지고, footer 위에 절대위치로 띄우면
+// 스크롤 위치에 따라 실제 옵션 카드와 겹치는 문제가 있다.
+// 부모(min-h-full flex-col)의 남는 공간을 mt-auto로 흡수해, 콘텐츠가 적은 스텝에서도 화면
+// 위쪽에 붙지 않고 항상 버튼 바로 위에 오도록 한다. (이 계산은 스크롤 컨테이너의 높이 = 앱
+// 루트의 뷰포트 높이 단위에 의존하므로, MobileLayout에서 dvh 대신 흔들림 없는 svh를 쓰도록
+// 맞춰뒀다 — 아래 MobileLayout.tsx 주석 참고.)
 function StepMascot({ src }: { src: string }) {
   return (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img
-      src={src}
-      alt=""
-      draggable={false}
-      className="w-24 h-auto object-contain select-none pointer-events-none mx-auto mb-2"
-    />
+    <div className="mt-auto pt-2">
+      <Image
+        src={src}
+        alt=""
+        draggable={false}
+        width={320}
+        height={213}
+        className="h-28 w-auto mx-auto object-contain select-none pointer-events-none"
+      />
+    </div>
   );
 }
 
@@ -449,6 +460,7 @@ export default function SurveyScreen({ onNavigate }: ScreenProps) {
   return (
     <div className="flex flex-col h-full bg-white text-slate-800 font-sans select-none overflow-hidden pt-header">
       <Header
+        key={isComplete ? "complete" : `step-${step}`}
         isLocationHeader
         onBack={() =>
           isComplete
@@ -485,12 +497,13 @@ export default function SurveyScreen({ onNavigate }: ScreenProps) {
             <p className="text-[13px] text-blue-500 font-semibold">
               맞춤 정책을 추천받을 수 있어요.
             </p>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
+            <Image
               src="/images/mascot/survey-complete.png"
               alt=""
               draggable={false}
-              className="w-64 h-auto object-contain select-none pointer-events-none mt-6"
+              width={640}
+              height={427}
+              className="w-full max-w-xs h-auto object-contain select-none pointer-events-none mt-6"
             />
           </div>
 
@@ -536,186 +549,193 @@ export default function SurveyScreen({ onNavigate }: ScreenProps) {
             key={step}
             className="flex-1 min-h-0 overflow-y-auto scroll-stable px-screen pb-4 animate-fade-in"
           >
-            {/* Step 1: 나이 */}
-            {step === 1 && (
-              <div className="pt-2">
-                <div className="relative w-full">
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    pattern="[0-9]*"
-                    maxLength={2}
-                    value={age}
-                    onChange={(e) =>
-                      setAge(e.target.value.replace(/\D/g, "").slice(0, 2))
-                    }
-                    onKeyDown={(e) => e.key === "Enter" && goNext()}
-                    placeholder="25"
-                    autoFocus
-                    className="w-full pl-5 pr-11 py-3.5 bg-slate-50 border border-slate-200 focus:border-blue-500 focus:bg-white rounded-2xl outline-none text-base font-semibold text-slate-900 transition-all"
-                  />
-                  <span className="absolute right-5 top-1/2 -translate-y-1/2 text-[12px] font-bold text-slate-400 pointer-events-none">
-                    세
-                  </span>
-                </div>
-              </div>
-            )}
-
-            {/* Step 2: 거주 지역 */}
-            {step === 2 && (
-              <div className="pt-2 relative">
-                <button
-                  onClick={() => setIsCityOpen((v) => !v)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && !isCityOpen && city) {
-                      e.preventDefault();
-                      goNext();
-                    }
-                    if (e.key === "Escape") setIsCityOpen(false);
-                  }}
-                  className={`w-full flex items-center justify-between px-5 py-4 rounded-2xl text-[15px] font-semibold transition-all text-left focus:outline-none border ${
-                    isCityOpen
-                      ? "border-blue-500 bg-white"
-                      : "border-slate-200 bg-slate-50 hover:border-blue-400 hover:bg-white"
-                  }`}
-                >
-                  <span className={city ? "text-slate-900" : "text-slate-400"}>
-                    {city || "시/도 선택"}
-                  </span>
-                  <Icon
-                    className={`w-5 h-5 text-slate-400 transition-transform duration-200 ${isCityOpen ? "rotate-180 text-blue-500" : ""}`}
-                  >
-                    <IconPath d="M19 9l-7 7-7-7" />
-                  </Icon>
-                </button>
-                {isCityOpen && (
-                  <div
-                    ref={dropdownRef}
-                    onKeyDown={(e) => {
-                      if (e.key === "Escape") {
-                        setIsCityOpen(false);
+            <div className="flex flex-col min-h-full">
+              {/* Step 1: 나이 */}
+              {step === 1 && (
+                <div className="pt-2">
+                  <div className="relative w-full">
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      maxLength={2}
+                      value={age}
+                      onChange={(e) =>
+                        setAge(e.target.value.replace(/\D/g, "").slice(0, 2))
                       }
-                    }}
-                    className="absolute top-full left-0 right-0 mt-1.5 max-h-56 overflow-y-auto scroll-stable bg-white border border-slate-100 rounded-2xl shadow-xl z-20 divide-y divide-slate-50"
-                  >
-                    {CITY_OPTIONS.map((c) => (
-                      <button
-                        key={c}
-                        data-selected={city === c ? "true" : undefined}
-                        onClick={() => {
-                          setCity(c);
-                          setIsCityOpen(false);
-                        }}
-                        className={`w-full text-left px-5 py-3 text-[13px] font-semibold hover:bg-slate-50 transition-colors focus:bg-blue-50 focus:outline-none ${
-                          city === c
-                            ? "text-blue-600 font-bold"
-                            : "text-slate-700"
-                        }`}
-                      >
-                        {c}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Step 3: 관심 분야 */}
-            {step === 3 && (
-              <div className="pt-2 flex flex-col gap-2.5">
-                {CATEGORIES.map(({ key, label, desc }) => {
-                  const active = selectedCategories[key];
-                  const style = CATEGORY_STYLE[key];
-                  return (
-                    <OptionButton
-                      key={key}
-                      label={label}
-                      desc={desc}
-                      active={active}
-                      onClick={() => toggleCategory(key)}
-                      icon={
-                        <div
-                          className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${style.color}`}
-                        >
-                          <Icon className="w-5 h-5">{style.path}</Icon>
-                        </div>
-                      }
+                      onKeyDown={(e) => e.key === "Enter" && goNext()}
+                      placeholder="25"
+                      autoFocus
+                      className="w-full pl-5 pr-11 py-3.5 bg-slate-50 border border-slate-200 focus:border-blue-500 focus:bg-white rounded-2xl outline-none text-base font-semibold text-slate-900 transition-all"
                     />
-                  );
-                })}
-              </div>
-            )}
+                    <span className="absolute right-5 top-1/2 -translate-y-1/2 text-[12px] font-bold text-slate-400 pointer-events-none">
+                      세
+                    </span>
+                  </div>
+                </div>
+              )}
 
-            {/* Step 4: 현재 상황 (단일 선택) */}
-            {step === 4 && (
-              <div className="pt-2 flex flex-col gap-2.5">
-                {EMPLOYMENT_OPTIONS.map(({ slug, label }) => (
-                  <OptionButton
-                    key={slug}
-                    label={label}
-                    active={employmentStatus === slug}
-                    onClick={() => setEmploymentStatus(slug)}
-                  />
-                ))}
-              </div>
-            )}
+              {/* Step 2: 거주 지역 */}
+              {step === 2 && (
+                <div className="pt-2 relative">
+                  <button
+                    onClick={() => setIsCityOpen((v) => !v)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && !isCityOpen && city) {
+                        e.preventDefault();
+                        goNext();
+                      }
+                      if (e.key === "Escape") setIsCityOpen(false);
+                    }}
+                    className={`w-full flex items-center justify-between px-5 py-4 rounded-2xl text-[15px] font-semibold transition-all text-left focus:outline-none border ${
+                      isCityOpen
+                        ? "border-blue-500 bg-white"
+                        : "border-slate-200 bg-slate-50 hover:border-blue-400 hover:bg-white"
+                    }`}
+                  >
+                    <span
+                      className={city ? "text-slate-900" : "text-slate-400"}
+                    >
+                      {city || "시/도 선택"}
+                    </span>
+                    <Icon
+                      className={`w-5 h-5 text-slate-400 transition-transform duration-200 ${isCityOpen ? "rotate-180 text-blue-500" : ""}`}
+                    >
+                      <IconPath d="M19 9l-7 7-7-7" />
+                    </Icon>
+                  </button>
+                  {isCityOpen && (
+                    <div
+                      ref={dropdownRef}
+                      onKeyDown={(e) => {
+                        if (e.key === "Escape") {
+                          setIsCityOpen(false);
+                        }
+                      }}
+                      className="absolute top-full left-0 right-0 mt-1.5 max-h-56 overflow-y-auto scroll-stable bg-white border border-slate-100 rounded-2xl shadow-xl z-20 divide-y divide-slate-50"
+                    >
+                      {CITY_OPTIONS.map((c) => (
+                        <button
+                          key={c}
+                          data-selected={city === c ? "true" : undefined}
+                          onClick={() => {
+                            setCity(c);
+                            setIsCityOpen(false);
+                          }}
+                          className={`w-full text-left px-5 py-3 text-[13px] font-semibold hover:bg-slate-50 transition-colors focus:bg-blue-50 focus:outline-none ${
+                            city === c
+                              ? "text-blue-600 font-bold"
+                              : "text-slate-700"
+                          }`}
+                        >
+                          {c}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
 
-            {/* Step 5: 학력 (단일 선택) */}
-            {step === 5 && (
-              <div className="pt-2 flex flex-col gap-2.5">
-                {EDUCATION_OPTIONS.map(({ slug, label }) => (
-                  <OptionButton
-                    key={slug}
-                    label={label}
-                    active={educationLevel === slug}
-                    onClick={() => setEducationLevel(slug)}
-                  />
-                ))}
-              </div>
-            )}
+              {/* Step 3: 관심 분야 */}
+              {step === 3 && (
+                <div className="pt-2 flex flex-col gap-2.5">
+                  {CATEGORIES.map(({ key, label, desc }) => {
+                    const active = selectedCategories[key];
+                    const style = CATEGORY_STYLE[key];
+                    return (
+                      <OptionButton
+                        key={key}
+                        label={label}
+                        desc={desc}
+                        active={active}
+                        onClick={() => toggleCategory(key)}
+                        icon={
+                          <div
+                            className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${style.color}`}
+                          >
+                            <Icon className="w-5 h-5">{style.path}</Icon>
+                          </div>
+                        }
+                      />
+                    );
+                  })}
+                </div>
+              )}
 
-            {/* Step 6: 해당되는 조건 (복수 선택) + 닉네임 + 약관 동의 */}
-            {step === 6 && (
-              <div className="pt-2 flex flex-col gap-2.5">
-                <OptionButton
-                  label="없음"
-                  active={specialConditions.length === 0}
-                  onClick={() => setSpecialConditions([])}
-                  shape="square"
-                />
-                {CONDITION_OPTIONS.map(({ slug, label }) => (
+              {/* Step 4: 현재 상황 (단일 선택) */}
+              {step === 4 && (
+                <div className="pt-2 flex flex-col gap-2.5">
+                  {EMPLOYMENT_OPTIONS.map(({ slug, label }) => (
+                    <OptionButton
+                      key={slug}
+                      label={label}
+                      active={employmentStatus === slug}
+                      onClick={() => setEmploymentStatus(slug)}
+                    />
+                  ))}
+                </div>
+              )}
+
+              {/* Step 5: 학력 (단일 선택) */}
+              {step === 5 && (
+                <div className="pt-2 flex flex-col gap-2.5">
+                  {EDUCATION_OPTIONS.map(({ slug, label }) => (
+                    <OptionButton
+                      key={slug}
+                      label={label}
+                      active={educationLevel === slug}
+                      onClick={() => setEducationLevel(slug)}
+                    />
+                  ))}
+                </div>
+              )}
+
+              {/* Step 6: 해당되는 조건 (복수 선택) + 닉네임 + 약관 동의 */}
+              {step === 6 && (
+                <div className="pt-2 flex flex-col gap-2.5">
                   <OptionButton
-                    key={slug}
-                    label={label}
-                    active={specialConditions.includes(slug)}
-                    onClick={() => toggleCondition(slug)}
+                    label="없음"
+                    active={specialConditions.length === 0}
+                    onClick={() => setSpecialConditions([])}
                     shape="square"
                   />
-                ))}
-                <button
-                  onClick={() => setTermsAgreed((v) => !v)}
-                  className="flex items-start gap-3 text-left p-4 bg-slate-50 border border-slate-200 rounded-2xl hover:bg-white transition-colors"
-                >
-                  <SelectIndicator
-                    active={termsAgreed}
-                    shape="square"
-                    className="mt-0.5"
-                  />
-                  <span className="text-[13px] text-slate-600 font-medium leading-relaxed">
-                    서비스 이용약관 및 개인정보 처리방침에 동의합니다{" "}
-                    <span className="text-blue-600 font-bold">(필수)</span>
-                  </span>
-                </button>
-                {error && (
-                  <p className="text-xs text-rose-500 font-semibold">{error}</p>
-                )}
-              </div>
-            )}
+                  {CONDITION_OPTIONS.map(({ slug, label }) => (
+                    <OptionButton
+                      key={slug}
+                      label={label}
+                      active={specialConditions.includes(slug)}
+                      onClick={() => toggleCondition(slug)}
+                      shape="square"
+                    />
+                  ))}
+                  <button
+                    onClick={() => setTermsAgreed((v) => !v)}
+                    className="flex items-start gap-3 text-left p-4 bg-slate-50 border border-slate-200 rounded-2xl hover:bg-white transition-colors"
+                  >
+                    <SelectIndicator
+                      active={termsAgreed}
+                      shape="square"
+                      className="mt-0.5"
+                    />
+                    <span className="text-[13px] text-slate-600 font-medium leading-relaxed">
+                      서비스 이용약관 및 개인정보 처리방침에 동의합니다{" "}
+                      <span className="text-blue-600 font-bold">(필수)</span>
+                    </span>
+                  </button>
+                  {error && (
+                    <p className="text-xs text-rose-500 font-semibold">
+                      {error}
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {STEP_MASCOTS[step] && <StepMascot src={STEP_MASCOTS[step]} />}
+            </div>
           </div>
 
           {/* Footer */}
           <footer className="px-screen pb-10 pt-4 shrink-0 border-t border-slate-50">
-            {STEP_MASCOTS[step] && <StepMascot src={STEP_MASCOTS[step]} />}
             <button
               onClick={goNext}
               disabled={!canNext() || isSubmitting}

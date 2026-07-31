@@ -1,6 +1,12 @@
 "use client";
 
-import React, { useState, Suspense, useEffect, useLayoutEffect, useRef } from "react";
+import React, {
+  useState,
+  Suspense,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+} from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Header from "./Header";
 import SplashScreen from "./SplashScreen";
@@ -69,13 +75,17 @@ export default function MobileLayout({ children }: Props) {
 
   useEffect(() => {
     if (skipSplash) return;
-    const timer = setTimeout(() => setSplashMinTimeElapsed(true), SPLASH_MIN_DURATION);
+    const timer = setTimeout(
+      () => setSplashMinTimeElapsed(true),
+      SPLASH_MIN_DURATION,
+    );
     return () => clearTimeout(timer);
   }, [skipSplash]);
 
   // splashVisible은 skipSplash/splashMinTimeElapsed/authInitLoading의 순수 파생값 —
   // 최소 노출 시간과 인증 초기화(initAuth) 완료 시점 중 늦게 끝나는 쪽에 맞춰 자동으로 꺼짐
-  const splashVisible = !skipSplash && !(splashMinTimeElapsed && !authInitLoading);
+  const splashVisible =
+    !skipSplash && !(splashMinTimeElapsed && !authInitLoading);
 
   // 세션 플래그 기록은 상태 파생과 분리된 순수 부수효과라 setState 없이 여기서만 처리
   useEffect(() => {
@@ -107,7 +117,7 @@ export default function MobileLayout({ children }: Props) {
       "/survey",
       "/filter",
       "/login",
-      "/skeleton"
+      "/skeleton",
     ];
     routes.forEach((route) => {
       if (route !== pathname) {
@@ -134,13 +144,21 @@ export default function MobileLayout({ children }: Props) {
   };
 
   return (
-    <div className="min-h-dvh bg-white sm:bg-slate-950 flex items-center justify-center p-0 font-sans select-none relative overflow-hidden overscroll-none">
-      <div className="w-full sm:w-[375px] h-dvh overflow-hidden sm:shadow-[0_24px_60px_rgba(0,0,0,0.8)] sm:border sm:border-white/10 relative bg-white flex flex-col overscroll-none">
+    <div className="min-h-svh bg-white sm:bg-slate-950 flex items-center justify-center p-0 font-sans select-none relative overflow-hidden overscroll-none">
+      {/* dvh(동적 뷰포트 높이) 대신 svh(항상 브라우저 툴바가 보이는 상태 기준 최소 높이)를 쓴다 —
+          dvh는 모바일에서 스크롤 중 주소창이 접히고 펴질 때마다 실시간으로 값이 바뀌어, 이
+          높이에 의존하는 flex 레이아웃(예: 설문 화면 마스코트의 mt-auto)이 그 변화폭만큼
+          흔들리는 원인이 된다. svh는 스크롤 중에도 값이 고정돼 있어 흔들림이 없다. */}
+      <div className="w-full sm:w-[375px] h-svh overflow-hidden sm:shadow-[0_24px_60px_rgba(0,0,0,0.8)] sm:border sm:border-white/10 relative bg-white flex flex-col overscroll-none">
         <SplashScreen visible={splashVisible} />
 
         {/* Unified sticky header componentized and used only once */}
         {showHeader && (
-          <Suspense fallback={<div className="w-full h-[76px] bg-white border-b border-slate-100 shrink-0" />}>
+          <Suspense
+            fallback={
+              <div className="w-full h-[76px] bg-white border-b border-slate-100 shrink-0" />
+            }
+          >
             <Header
               onNavigate={handleNavigate}
               isLocationHeader={isLocationHeader}
@@ -186,21 +204,18 @@ export default function MobileLayout({ children }: Props) {
           className="flex-1 min-h-0 overflow-hidden relative"
           style={{
             transform: `translateY(${isRefreshing ? 56 : pullDistance}px)`,
-            transition: pullDistance === 0 ? "transform 200ms ease-out" : undefined,
+            transition:
+              pullDistance === 0 ? "transform 200ms ease-out" : undefined,
           }}
         >
           {children}
         </div>
 
         {/* Login Prompt Modal — rendered at phone-frame level (z-[60], above drawer z-50) */}
-        {loginModalOpen && (
-          <LoginPromptModal onClose={closeLoginModal} />
-        )}
+        {loginModalOpen && <LoginPromptModal onClose={closeLoginModal} />}
 
         {/* Coming Soon Modal — rendered at phone-frame level (z-[60], above drawer z-50) */}
-        {supportModalOpen && (
-          <ComingSoonModal onClose={closeSupportModal} />
-        )}
+        {supportModalOpen && <ComingSoonModal onClose={closeSupportModal} />}
 
         {/* Notification Coming Soon Modal — rendered at phone-frame level (z-[60], above drawer z-50) */}
         {notificationModalOpen && (
@@ -227,7 +242,9 @@ export default function MobileLayout({ children }: Props) {
             <div className="relative w-[300px] h-full bg-white shadow-2xl flex flex-col animate-slide-left z-10 border-l border-slate-100">
               {/* Close row inside drawer */}
               <div className="px-5 py-4 border-b border-slate-50 flex items-center justify-between bg-white shrink-0">
-                <span className="text-sm font-bold text-slate-800">전체 메뉴</span>
+                <span className="text-sm font-bold text-slate-800">
+                  전체 메뉴
+                </span>
                 <button
                   onClick={() => setIsProfileOpen(false)}
                   className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-slate-100 active:scale-95 text-slate-400 hover:text-slate-700 transition-all font-bold"
