@@ -1,12 +1,15 @@
 from datetime import date, datetime
-from typing import List, Optional
+from typing import List, Literal, Optional
 
 from pydantic import BaseModel, Field
+
+PolicySource = Literal["policy", "chuncheon"]
 
 
 class PolicyCard(BaseModel):
     plcy_no: str
     plcy_nm: str
+    source: PolicySource = "policy"  # 데이터 출처 — 상세/공유 조회 시 어느 소스를 다시 볼지 식별
     category: Optional[str] = None
     keywords: List[str] = []  # 통제어휘(목록 카드에도 제공)
     region: str
@@ -101,8 +104,13 @@ class PolicyDetail(BaseModel):
     biz_period: Optional[str] = None       # 사업 기간(신청기간과 별개)
 
 
+class ShareItem(BaseModel):
+    plcy_no: str
+    source: PolicySource = "policy"
+
+
 class ShareCreateRequest(BaseModel):
-    plcy_nos: List[str] = Field(min_length=1, max_length=50)  # 공유할 찜 목록(클라이언트 스냅샷)
+    items: List[ShareItem] = Field(min_length=1, max_length=50)  # 공유할 찜 목록(클라이언트 스냅샷)
 
 
 class ShareCreateResponse(BaseModel):
