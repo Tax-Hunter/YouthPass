@@ -4,7 +4,7 @@ import React from "react";
 
 interface BadgeProps {
   children: React.ReactNode;
-  variant?: "primary" | "danger" | "neutral";
+  variant?: "primary" | "danger" | "neutral" | "chuncheon";
   size?: "sm" | "md";
   className?: string;
 }
@@ -26,6 +26,7 @@ export default function Badge({
     primary: "text-blue-600 bg-blue-50",
     danger: "text-rose-600 bg-rose-50",
     neutral: "text-slate-500 bg-slate-100",
+    chuncheon: "text-violet-700 bg-violet-50",
   };
 
   const styles = `${baseStyle} ${sizeStyles[size]} ${variantStyles[variant]} ${className}`;

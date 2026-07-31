@@ -5,7 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { useBookmarkStore } from "@/lib/store/bookmarkStore";
 import { useAuthStore } from "@/lib/store/authStore";
 import { useFilterStore } from "@/lib/store/filterStore";
-import { usePolicyDetail } from "@/lib/api/policy";
+import { usePolicyDetail, type PolicyDetailSource } from "@/lib/api/policy";
 import Badge from "@/app/components/ui/Badge";
 import ScreenContent, { ScreenBleed } from "@/app/components/layout/ScreenContent";
 
@@ -43,7 +43,8 @@ export default function PolicyDetailScreen({ onNavigate }: ScreenProps) {
   const { filters } = useFilterStore();
   const searchParams = useSearchParams();
   const policyId = searchParams.get("id");
-  const { policy, isLoading, error } = usePolicyDetail(policyId);
+  const src = (searchParams.get("src") as PolicyDetailSource | null) ?? "policy";
+  const { policy, isLoading, error } = usePolicyDetail(policyId, src);
 
   const isFav = !!user && policy ? isBookmarked(policy.plcy_no) : false;
   const hasLink = !!policy?.aply_url_addr;

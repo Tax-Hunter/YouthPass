@@ -2,7 +2,7 @@
 
 import React from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { PolicyCardData, prefetchPolicyDetail } from "@/lib/api/policy";
+import { PolicyCardData, PolicyDetailSource, prefetchPolicyDetail } from "@/lib/api/policy";
 import Badge from "./Badge";
 
 interface PolicyCardProps {
@@ -16,6 +16,7 @@ interface PolicyCardProps {
   showDday?: boolean;
   showSummary?: boolean;
   showBookmark?: boolean;
+  source?: PolicyDetailSource;
 }
 
 export default function PolicyCard({
@@ -29,6 +30,7 @@ export default function PolicyCard({
   showDday = true,
   showSummary = true,
   showBookmark = true,
+  source = "policy",
 }: PolicyCardProps) {
   const isDdayClosed = policy.dday === "마감";
   const isDdayUrgent = policy.dday.startsWith("D-");
@@ -37,9 +39,9 @@ export default function PolicyCard({
   return (
     <div
       onClick={onClick}
-      onMouseEnter={() => prefetchPolicyDetail(queryClient, policy.plcy_no)}
+      onMouseEnter={() => prefetchPolicyDetail(queryClient, policy.plcy_no, source)}
       // 모바일(터치)엔 hover가 없어 onMouseEnter prefetch가 동작하지 않으므로 터치 시작 시점에도 prefetch
-      onTouchStart={() => prefetchPolicyDetail(queryClient, policy.plcy_no)}
+      onTouchStart={() => prefetchPolicyDetail(queryClient, policy.plcy_no, source)}
       className="p-5 bg-white border border-slate-100 rounded-2xl shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer group relative flex flex-col justify-between"
     >
       <div>
@@ -53,6 +55,11 @@ export default function PolicyCard({
             )}
           </div>
           <div className="flex items-center gap-2">
+            {source === "chuncheon" && (
+              <Badge variant="chuncheon" size="sm">
+                춘천
+              </Badge>
+            )}
             {showDday && (
               <Badge variant={isDdayClosed ? "neutral" : isDdayUrgent ? "danger" : "primary"} size="sm">
                 {policy.dday}
