@@ -8,6 +8,7 @@ import {
   useInfinitePolicyList,
   sortPoliciesByDeadline,
 } from "@/lib/api/policy";
+import { useChuncheonPolicyList } from "@/lib/api/chuncheon";
 import { useInfiniteScrollSentinel } from "@/lib/useInfiniteScrollSentinel";
 import { useFilterStore } from "@/lib/store/filterStore";
 import { useUiStore } from "@/lib/store/uiStore";
@@ -115,7 +116,13 @@ export default function SearchScreen({ onNavigate }: ScreenProps) {
   const isSurveyDefault =
     surveyAgeActive && hasSurvey && !searchDismissedSurvey;
   const applyStoredFilters = isManualFilter || isSurveyDefault;
+  // "춘천"은 시/도 매핑이 없는 별도 데이터 소스 — 일반 정책 검색(sido 기반) 대신
+  // 춘천 프록시 API를 조회하고, 응답을 "춘천 지역 정책"/"전국 정책" 두 섹션으로 나눠 보여준다.
+  const isChuncheonCity = applyStoredFilters && filters.city === "춘천";
   const sido = applyStoredFilters ? cityToSido(filters.city) : undefined;
+  // 특정 시/도를 선택한 경우(전국 필터 제외) — 같은 목록 안에 섞여 오는 "전국 공통" 정책을
+  // 별도 섹션으로 분리해서 보여준다(백엔드가 sido 필터에 전국 정책을 항상 포함해서 내려줌).
+  const isSidoFilter = !!sido && !isChuncheonCity;
   const appliedCategories = applyStoredFilters
     ? Object.entries(filters.categories)
         .filter(([, v]) => v)
@@ -133,7 +140,7 @@ export default function SearchScreen({ onNavigate }: ScreenProps) {
     hasNextPage,
     isFetchingNextPage,
   } = useInfinitePolicyList(
-    _hasHydrated
+    _hasHydrated && !isChuncheonCity
       ? {
           ...(effectiveQuery ? { q: effectiveQuery } : { sort: "recent" }),
           size: 20,
@@ -148,7 +155,58 @@ export default function SearchScreen({ onNavigate }: ScreenProps) {
       : null,
   );
 
-  const showSkeleton = !_hasHydrated || isLoading;
+  // 춘천 프록시 API는 로컬(춘천) 정책만 신뢰 — 데이터가 소수라 무한스크롤 없이 한 번에 조회.
+  // 큐레이션에 섞여 오는 전국 정책은 외부 데이터 상태에 따라 있다 없다 하므로(Phase 3/5 조사)
+  // 더 이상 여기서 쓰지 않고, 아래 자체 DB "전국 정책" 조회로 대체한다.
+  const { data: chuncheonData, isLoading: isChuncheonLoading } =
+    useChuncheonPolicyList(
+      _hasHydrated && isChuncheonCity
+        ? {
+            ...(effectiveQuery ? { q: effectiveQuery } : {}),
+            size: 100,
+            ...(!showClosedOnly && { applicable: true }),
+            ...(appliedCategories.length > 0 && { category: appliedCategories }),
+          }
+        : null,
+    );
+  const chuncheonProxyItems = chuncheonData?.items ?? [];
+  const chuncheonLocalClosedFiltered = showClosedOnly
+    ? chuncheonProxyItems.filter((p) => p.dday === "마감")
+    : chuncheonProxyItems;
+  const chuncheonLocalItems = sortPoliciesByDeadline(
+    chuncheonLocalClosedFiltered.filter((p) => p.region === "춘천"),
+  );
+
+  // "춘천" 필터의 "전국 정책" 섹션 — 자체 정책 DB에서 nationwide=true로 직접 조회(무한스크롤 지원).
+  // "춘천"은 sido 코드가 없어 일반 시/도 필터처럼 같은 쿼리에 전국 정책이 묻어오지 않기 때문에 별도 호출.
+  const {
+    items: chuncheonNationalItems,
+    total: chuncheonNationalTotal,
+    isLoading: isChuncheonNationalLoading,
+    fetchNextPage: fetchNextChuncheonNationalPage,
+    hasNextPage: hasNextChuncheonNationalPage,
+    isFetchingNextPage: isFetchingNextChuncheonNationalPage,
+  } = useInfinitePolicyList(
+    _hasHydrated && isChuncheonCity
+      ? {
+          ...(effectiveQuery ? { q: effectiveQuery } : { sort: "recent" }),
+          size: 20,
+          nationwide: true,
+          ...(!showClosedOnly && { applicable: true }),
+          ...(appliedCategories.length > 0 && { category: appliedCategories }),
+        }
+      : null,
+  );
+  const chuncheonNationalClosedFiltered = showClosedOnly
+    ? chuncheonNationalItems.filter((p) => p.dday === "마감")
+    : chuncheonNationalItems;
+  const sortedChuncheonNationalItems = sortPoliciesByDeadline(
+    chuncheonNationalClosedFiltered,
+  );
+
+  const showSkeleton = isChuncheonCity
+    ? !_hasHydrated || isChuncheonLoading || isChuncheonNationalLoading
+    : !_hasHydrated || isLoading;
 
   // 검색어(또는 전체 목록)별로 스크롤 위치를 구분 저장 — 키가 바뀌면 새 검색으로 간주해
   // 자연스럽게 처음부터 시작하고, 같은 키로 돌아오면(뒤로가기) 마지막 위치를 복원
@@ -201,6 +259,24 @@ export default function SearchScreen({ onNavigate }: ScreenProps) {
     onNavigate?.(`detail?id=${plcy_no}`);
   };
 
+  // 춘천 프록시 API 출처 카드(로컬/전국 두 섹션 공통)는 상세 조회도 같은 프록시 상세 엔드포인트를 써야 함
+  const handleChuncheonCardClick = (plcy_no: string) => {
+    onNavigate?.(`detail?id=${plcy_no}&src=chuncheon`);
+  };
+
+  // 전체 개수 표시는 기존 규약(마감 토글 ON일 땐 숨김, 클라이언트 dday 필터와 무관하게 API total 기준)을
+  // 그대로 따른다 — 로컬(춘천)은 페이지네이션이 없어 실제 개수, 전국은 무한스크롤 쿼리의 total.
+  const chuncheonResultCount = chuncheonLocalItems.length + (chuncheonNationalTotal ?? 0);
+
+  // 일반 시/도 필터 — "{시/도} 정책"/"전국 정책" 두 그룹으로 나누고, 그룹 내부에서만 정렬.
+  // 무한스크롤로 페이지가 늘어도 로컬 섹션은 항상 위, 전국 섹션은 항상 아래로 고정된다.
+  const sidoLocalItems = sortPoliciesByDeadline(
+    closedFilteredItems.filter((p) => p.region !== "전국 공통"),
+  );
+  const sidoNationalItems = sortPoliciesByDeadline(
+    closedFilteredItems.filter((p) => p.region === "전국 공통"),
+  );
+
   const sortedItems =
     closedFilteredItems.length > 0
       ? sortPoliciesByDeadline(closedFilteredItems)
@@ -209,6 +285,12 @@ export default function SearchScreen({ onNavigate }: ScreenProps) {
   const sentinelRef = useInfiniteScrollSentinel(
     fetchNextPage,
     hasNextPage && !isFetchingNextPage,
+  );
+
+  // 춘천 필터의 "전국 정책" 섹션 전용 무한스크롤 sentinel(로컬 섹션은 페이지네이션 없음)
+  const chuncheonNationalSentinelRef = useInfiniteScrollSentinel(
+    fetchNextChuncheonNationalPage,
+    hasNextChuncheonNationalPage && !isFetchingNextChuncheonNationalPage,
   );
 
   return (
@@ -322,7 +404,7 @@ export default function SearchScreen({ onNavigate }: ScreenProps) {
             </span>
             {!showSkeleton && !showClosedOnly && (
               <span className="text-xs font-bold text-blue-600 font-mono">
-                {total}
+                {isChuncheonCity ? chuncheonResultCount : total}
               </span>
             )}
           </div>
@@ -346,61 +428,249 @@ export default function SearchScreen({ onNavigate }: ScreenProps) {
           </button>
         </div>
 
-        <div className="py-4 space-y-5">
-          {showSkeleton ? (
-            Array.from({ length: 3 }).map((_, i) => (
-              <div
-                key={i}
-                className="p-5 bg-white border border-slate-100 rounded-2xl animate-pulse"
-              >
-                <div className="flex justify-between mb-3">
-                  <div className="h-5 w-14 bg-slate-200 rounded-full" />
-                  <div className="h-5 w-10 bg-slate-200 rounded-full" />
-                </div>
-                <div className="space-y-2">
-                  <div className="h-4 bg-slate-200 rounded-md w-11/12" />
-                  <div className="h-3 bg-slate-200 rounded-md w-7/12" />
+        {isChuncheonCity ? (
+          <div className="py-4">
+            {showSkeleton ? (
+              <div className="space-y-5">
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <div
+                    key={i}
+                    className="p-5 bg-white border border-slate-100 rounded-2xl animate-pulse"
+                  >
+                    <div className="flex justify-between mb-3">
+                      <div className="h-5 w-14 bg-slate-200 rounded-full" />
+                      <div className="h-5 w-10 bg-slate-200 rounded-full" />
+                    </div>
+                    <div className="space-y-2">
+                      <div className="h-4 bg-slate-200 rounded-md w-11/12" />
+                      <div className="h-3 bg-slate-200 rounded-md w-7/12" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="space-y-8">
+                {/* 춘천 로컬 정책 — 0건이어도 섹션은 유지해 "춘천" 필터를 선택했음을 계속 보여줌 */}
+                <section className="space-y-5">
+                  <h3 className="text-sm font-bold text-slate-900">
+                    춘천 지역 정책
+                  </h3>
+                  {chuncheonLocalItems.length === 0 ? (
+                    <p className="text-xs font-bold text-slate-400 py-2">
+                      진행 중인 정책이 없습니다.
+                    </p>
+                  ) : (
+                    chuncheonLocalItems.map((policy) => (
+                      <PolicyCard
+                        key={policy.plcy_no}
+                        policy={policy}
+                        isBookmarked={false}
+                        onToggleBookmark={() => {}}
+                        onClick={() => handleChuncheonCardClick(policy.plcy_no)}
+                        source="chuncheon"
+                        showCategory={true}
+                        showLocation={true}
+                        showActionText={true}
+                        showBookmark={false}
+                      />
+                    ))
+                  )}
+                </section>
+
+                {/* "춘천"은 sido 코드가 없어 자체 DB에서 nationwide=true로 별도 조회한 전국 정책 — 무한스크롤 */}
+                <section className="space-y-5">
+                  <div className="mb-0.5">
+                    <h3 className="text-sm font-bold text-slate-900">
+                      전국 정책
+                    </h3>
+                    <p className="text-[11px] text-slate-400 font-semibold mt-0.5">
+                      춘천 청년에게 추천하는 전국 단위 정책이에요
+                    </p>
+                  </div>
+                  {sortedChuncheonNationalItems.length === 0 ? (
+                    <p className="text-xs font-bold text-slate-400 py-2">
+                      진행 중인 정책이 없습니다.
+                    </p>
+                  ) : (
+                    sortedChuncheonNationalItems.map((policy) => (
+                      <PolicyCard
+                        key={policy.plcy_no}
+                        policy={policy}
+                        isBookmarked={false}
+                        onToggleBookmark={() => {}}
+                        onClick={() => handleChuncheonCardClick(policy.plcy_no)}
+                        showCategory={true}
+                        showLocation={true}
+                        showActionText={true}
+                        showBookmark={false}
+                      />
+                    ))
+                  )}
+                  <div ref={chuncheonNationalSentinelRef} className="h-4">
+                    {isFetchingNextChuncheonNationalPage && (
+                      <div className="flex justify-center py-2">
+                        <div className="w-5 h-5 border-2 border-blue-200 border-t-blue-600 rounded-full animate-spin" />
+                      </div>
+                    )}
+                  </div>
+                </section>
+              </div>
+            )}
+          </div>
+        ) : isSidoFilter ? (
+          <div className="py-4">
+            {showSkeleton ? (
+              <div className="space-y-5">
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <div
+                    key={i}
+                    className="p-5 bg-white border border-slate-100 rounded-2xl animate-pulse"
+                  >
+                    <div className="flex justify-between mb-3">
+                      <div className="h-5 w-14 bg-slate-200 rounded-full" />
+                      <div className="h-5 w-10 bg-slate-200 rounded-full" />
+                    </div>
+                    <div className="space-y-2">
+                      <div className="h-4 bg-slate-200 rounded-md w-11/12" />
+                      <div className="h-3 bg-slate-200 rounded-md w-7/12" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : sidoLocalItems.length === 0 && sidoNationalItems.length === 0 ? (
+              <div className="text-center py-10 flex flex-col items-center gap-2">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src="/images/mascot/search.png"
+                  alt=""
+                  draggable={false}
+                  className="w-20 h-auto object-contain select-none pointer-events-none mb-1"
+                />
+                <p className="text-xs font-bold text-slate-400">
+                  검색 결과가 없습니다.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-8">
+                {/* 로컬(선택한 시/도) 섹션 — 항상 위에 고정, 그룹 내부에서만 정렬 */}
+                <section className="space-y-5">
+                  <h3 className="text-sm font-bold text-slate-900">
+                    {filters.city} 정책
+                  </h3>
+                  {sidoLocalItems.length === 0 ? (
+                    <p className="text-xs font-bold text-slate-400 py-2">
+                      진행 중인 정책이 없습니다.
+                    </p>
+                  ) : (
+                    sidoLocalItems.map((policy) => (
+                      <PolicyCard
+                        key={policy.plcy_no}
+                        policy={policy}
+                        isBookmarked={!!user && isBookmarked(policy.plcy_no)}
+                        onToggleBookmark={() => toggleBookmark(policy.plcy_no)}
+                        onClick={() => handleCardClick(policy.plcy_no)}
+                        showCategory={true}
+                        showLocation={true}
+                        showActionText={true}
+                        showBookmark={!!user}
+                      />
+                    ))
+                  )}
+                </section>
+
+                {/* 전국 공통 섹션 — 항상 아래에 고정, 같은 무한스크롤 쿼리 결과에서 분리 */}
+                <section className="space-y-5">
+                  <h3 className="text-sm font-bold text-slate-900">
+                    전국 정책
+                  </h3>
+                  {sidoNationalItems.length === 0 ? (
+                    <p className="text-xs font-bold text-slate-400 py-2">
+                      진행 중인 정책이 없습니다.
+                    </p>
+                  ) : (
+                    sidoNationalItems.map((policy) => (
+                      <PolicyCard
+                        key={policy.plcy_no}
+                        policy={policy}
+                        isBookmarked={!!user && isBookmarked(policy.plcy_no)}
+                        onToggleBookmark={() => toggleBookmark(policy.plcy_no)}
+                        onClick={() => handleCardClick(policy.plcy_no)}
+                        showCategory={true}
+                        showLocation={true}
+                        showActionText={true}
+                        showBookmark={!!user}
+                      />
+                    ))
+                  )}
+                </section>
+
+                <div ref={sentinelRef} className="h-4">
+                  {isFetchingNextPage && (
+                    <div className="flex justify-center py-2">
+                      <div className="w-5 h-5 border-2 border-blue-200 border-t-blue-600 rounded-full animate-spin" />
+                    </div>
+                  )}
                 </div>
               </div>
-            ))
-          ) : !sortedItems || sortedItems.length === 0 ? (
-            <div className="text-center py-10 flex flex-col items-center gap-2">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src="/images/mascot/search.png"
-                alt=""
-                draggable={false}
-                className="w-20 h-auto object-contain select-none pointer-events-none mb-1"
-              />
-              <p className="text-xs font-bold text-slate-400">
-                검색 결과가 없습니다.
-              </p>
-            </div>
-          ) : (
-            sortedItems.map((policy) => (
-              <PolicyCard
-                key={policy.plcy_no}
-                policy={policy}
-                isBookmarked={!!user && isBookmarked(policy.plcy_no)}
-                onToggleBookmark={() => toggleBookmark(policy.plcy_no)}
-                onClick={() => handleCardClick(policy.plcy_no)}
-                showCategory={true}
-                showLocation={true}
-                showActionText={true}
-                showBookmark={!!user}
-              />
-            ))
-          )}
-          {sortedItems && sortedItems.length > 0 && (
-            <div ref={sentinelRef} className="h-4">
-              {isFetchingNextPage && (
-                <div className="flex justify-center py-2">
-                  <div className="w-5 h-5 border-2 border-blue-200 border-t-blue-600 rounded-full animate-spin" />
+            )}
+          </div>
+        ) : (
+          <div className="py-4 space-y-5">
+            {showSkeleton ? (
+              Array.from({ length: 3 }).map((_, i) => (
+                <div
+                  key={i}
+                  className="p-5 bg-white border border-slate-100 rounded-2xl animate-pulse"
+                >
+                  <div className="flex justify-between mb-3">
+                    <div className="h-5 w-14 bg-slate-200 rounded-full" />
+                    <div className="h-5 w-10 bg-slate-200 rounded-full" />
+                  </div>
+                  <div className="space-y-2">
+                    <div className="h-4 bg-slate-200 rounded-md w-11/12" />
+                    <div className="h-3 bg-slate-200 rounded-md w-7/12" />
+                  </div>
                 </div>
-              )}
-            </div>
-          )}
-        </div>
+              ))
+            ) : !sortedItems || sortedItems.length === 0 ? (
+              <div className="text-center py-10 flex flex-col items-center gap-2">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src="/images/mascot/search.png"
+                  alt=""
+                  draggable={false}
+                  className="w-20 h-auto object-contain select-none pointer-events-none mb-1"
+                />
+                <p className="text-xs font-bold text-slate-400">
+                  검색 결과가 없습니다.
+                </p>
+              </div>
+            ) : (
+              sortedItems.map((policy) => (
+                <PolicyCard
+                  key={policy.plcy_no}
+                  policy={policy}
+                  isBookmarked={!!user && isBookmarked(policy.plcy_no)}
+                  onToggleBookmark={() => toggleBookmark(policy.plcy_no)}
+                  onClick={() => handleCardClick(policy.plcy_no)}
+                  showCategory={true}
+                  showLocation={true}
+                  showActionText={true}
+                  showBookmark={!!user}
+                />
+              ))
+            )}
+            {sortedItems && sortedItems.length > 0 && (
+              <div ref={sentinelRef} className="h-4">
+                {isFetchingNextPage && (
+                  <div className="flex justify-center py-2">
+                    <div className="w-5 h-5 border-2 border-blue-200 border-t-blue-600 rounded-full animate-spin" />
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
       </ScreenContent>
 
       <FloatingFilterButton

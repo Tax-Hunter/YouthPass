@@ -22,7 +22,10 @@ export const SIDO_TO_CITY: Record<string, string> = Object.fromEntries(
   Object.entries(CITY_TO_SIDO).map(([k, v]) => [v, k])
 );
 
-export const CITY_OPTIONS = ["전국", ...Object.keys(CITY_TO_SIDO)];
+// "춘천"은 시/도가 아니라 강원특별자치도 산하 기초자치단체라 CITY_TO_SIDO 매핑에는 없다.
+// 필터 선택지 최상단에만 노출하고, cityToSido("춘천")는 계속 undefined를 반환해
+// "춘천 전용 데이터 소스로 분기해야 함"을 나타내는 신호로 쓰인다.
+export const CITY_OPTIONS = ["춘천", "전국", ...Object.keys(CITY_TO_SIDO)];
 
 export function cityToSido(city: string): string | undefined {
   return CITY_TO_SIDO[city];
