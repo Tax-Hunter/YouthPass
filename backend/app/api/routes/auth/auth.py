@@ -25,12 +25,14 @@ REFRESH_TOKEN_COOKIE_PATH = f"{settings.API_PREFIX}/auth"
 
 
 def _set_refresh_token_cookie(response: Response, raw_refresh_token: str) -> None:
+    # 브라우저는 Next.js rewrites 프록시를 통해 항상 프론트엔드와 동일 origin으로만 통신하므로
+    # (frontend/next.config.ts 참고) refresh_token 쿠키는 first-party로 전달됨 — SameSite=Lax로 충분.
     response.set_cookie(
         key=REFRESH_TOKEN_COOKIE,
         value=raw_refresh_token,
         httponly=True,
         secure=settings.ENV != "dev",
-        samesite="none" if settings.ENV != "dev" else "lax",
+        samesite="lax",
         path=REFRESH_TOKEN_COOKIE_PATH,
         max_age=settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
     )

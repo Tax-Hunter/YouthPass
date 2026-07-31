@@ -43,7 +43,8 @@ export default function SearchScreen({ onNavigate }: ScreenProps) {
   const { recentSearches, addRecentSearch, clearRecentSearches } =
     useRecentSearchStore();
   const [isFilterOpen, setIsFilterOpen] = useState(false);
-  const [showClosedOnly, setShowClosedOnly] = useState(false);
+  const showClosedOnly = useUiStore((s) => s.showClosedOnly);
+  const toggleShowClosedOnly = useUiStore((s) => s.toggleShowClosedOnly);
   const inputRef = useRef<HTMLInputElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const setScrollPosition = useScrollPositionStore((s) => s.setScrollPosition);
@@ -408,7 +409,7 @@ export default function SearchScreen({ onNavigate }: ScreenProps) {
           </div>
           <button
             type="button"
-            onClick={() => setShowClosedOnly((prev) => !prev)}
+            onClick={() => toggleShowClosedOnly()}
             className="flex items-center gap-1.5"
           >
             <span className="text-[11px] font-bold text-slate-500">
@@ -496,7 +497,7 @@ export default function SearchScreen({ onNavigate }: ScreenProps) {
                         policy={policy}
                         isBookmarked={false}
                         onToggleBookmark={() => {}}
-                        onClick={() => handleChuncheonCardClick(policy.plcy_no)}
+                        onClick={() => handleCardClick(policy.plcy_no)}
                         showCategory={true}
                         showLocation={true}
                         showActionText={true}
