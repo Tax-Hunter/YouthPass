@@ -15,6 +15,27 @@ import Header from "@/app/components/layout/Header";
 
 const TOTAL_STEPS = 6;
 
+// 스텝별 하단 "다음" 버튼 옆에 붙는 마스코트 (1·6번은 없음)
+const STEP_MASCOTS: Record<number, string> = {
+  2: "/images/mascot/survey-home.png",
+  3: "/images/mascot/survey-category.png",
+  4: "/images/mascot/survey-status.png",
+  5: "/images/mascot/survey-study.png",
+};
+
+// 스텝 footer의 "다음" 버튼 위에 붙는 마스코트 — 스텝마다 위치/스타일은 동일하고 이미지만 바뀜
+function StepMascot({ src }: { src: string }) {
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={src}
+      alt=""
+      draggable={false}
+      className="w-24 h-auto object-contain select-none pointer-events-none mx-auto mb-2"
+    />
+  );
+}
+
 // 공통 svg 아이콘 래퍼 (fill=none, stroke=currentColor, viewBox 24)
 function Icon({
   className,
@@ -24,7 +45,12 @@ function Icon({
   children: React.ReactNode;
 }) {
   return (
-    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <svg
+      className={className}
+      fill="none"
+      stroke="currentColor"
+      viewBox="0 0 24 24"
+    >
       {children}
     </svg>
   );
@@ -42,7 +68,11 @@ function IconPath({ d, strokeWidth = 2 }: { d: string; strokeWidth?: number }) {
   );
 }
 
-function CheckIcon({ className = "w-3 h-3 text-white" }: { className?: string }) {
+function CheckIcon({
+  className = "w-3 h-3 text-white",
+}: {
+  className?: string;
+}) {
   return (
     <Icon className={className}>
       <IconPath d="M5 13l4 4L19 7" strokeWidth={3} />
@@ -237,6 +267,7 @@ export default function SurveyScreen({ onNavigate }: ScreenProps) {
   );
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isComplete, setIsComplete] = useState(false);
 
   const isEditMode = user?.survey_completed === true;
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -351,7 +382,7 @@ export default function SurveyScreen({ onNavigate }: ScreenProps) {
       }
     }
 
-    go("search");
+    setIsComplete(true);
   };
 
   const goNext = () => {
@@ -393,10 +424,13 @@ export default function SurveyScreen({ onNavigate }: ScreenProps) {
   }, [step, isCityOpen, city, selectedCount, isSubmitting, goNext]);
 
   const stepMeta = [
-    { q: "나이가 어떻게 되시나요?", hint: "만 나이 기준 19~39세 (실제 나이를 입력해주세요)" },
+    {
+      q: "나이가 어떻게 되시나요?",
+      hint: "만 나이 기준 19~39세 (실제 나이를 입력해주세요)",
+    },
     { q: "어디에 거주하시나요?", hint: "시·도 기준으로 선택해주세요" },
     {
-      q: "어떤 분야 정책이\n필요하신가요?",
+      q: "어떤 분야 정책이 필요해요?",
       hint: `최대 5개 · ${selectedCount}개 선택됨`,
     },
     { q: "현재 상황은\n무엇인가요?", hint: "정책 취업 조건 매칭에 활용돼요" },
@@ -416,256 +450,312 @@ export default function SurveyScreen({ onNavigate }: ScreenProps) {
     <div className="flex flex-col h-full bg-white text-slate-800 font-sans select-none overflow-hidden pt-header">
       <Header
         isLocationHeader
-        onBack={() => (step > 1 ? setStep((s) => s - 1) : go("back"))}
+        onBack={() =>
+          isComplete
+            ? setIsComplete(false)
+            : step > 1
+              ? setStep((s) => s - 1)
+              : go("back")
+        }
         onSkip={() => go("search")}
       />
 
-      {/* Step indicator: segmented progress bar + step count */}
-      <div className="px-screen pt-6 pb-1 shrink-0">
-        <div className="flex items-center gap-2 mb-4">
-          <div className="flex-1 flex gap-1.5">
-            {Array.from({ length: TOTAL_STEPS }).map((_, i) => (
-              <div
-                key={i}
-                className={`h-1.5 flex-1 rounded-full transition-colors duration-300 ${
-                  i < step ? "bg-blue-600" : "bg-slate-100"
-                }`}
-              />
-            ))}
+      {isComplete ? (
+        <>
+          {/* 설문 완료 안내 */}
+          <div className="flex-1 min-h-0 overflow-y-auto scroll-stable flex flex-col items-center justify-center px-screen py-10 text-center animate-fade-in">
+            <div className="w-20 h-20 rounded-full border-[3px] border-blue-600 flex items-center justify-center mb-6">
+              <svg
+                className="w-9 h-9 text-blue-600"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="3"
+                  d="M5 13l4 4L19 7"
+                />
+              </svg>
+            </div>
+            <h2 className="text-xl font-bold text-slate-900 mb-2 tracking-tight">
+              설문이 완료되었어요!
+            </h2>
+            <p className="text-[13px] text-blue-500 font-semibold">
+              맞춤 정책을 추천받을 수 있어요.
+            </p>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/images/mascot/survey-complete.png"
+              alt=""
+              draggable={false}
+              className="w-64 h-auto object-contain select-none pointer-events-none mt-6"
+            />
           </div>
-          <span className="text-[11px] font-extrabold text-blue-600 tabular-nums shrink-0">
-            {step}
-            <span className="text-slate-300">/{TOTAL_STEPS}</span>
-          </span>
-        </div>
-        <h2 className="text-[26px] font-extrabold text-slate-900 leading-snug tracking-tight whitespace-pre-line">
-          {current.q}
-        </h2>
-        <p className="text-[13px] text-slate-400 font-medium mt-1.5">
-          {current.hint}
-        </p>
-      </div>
 
-      {/* Content */}
-      <div
-        key={step}
-        className="flex-1 min-h-0 overflow-y-auto scroll-stable px-screen pb-4 animate-fade-in"
-      >
-        {/* Step 1: 나이 */}
-        {step === 1 && (
-          <div className="pt-2">
-            <div className="relative w-full">
-              <input
-                type="text"
-                inputMode="numeric"
-                pattern="[0-9]*"
-                maxLength={2}
-                value={age}
-                onChange={(e) =>
-                  setAge(e.target.value.replace(/\D/g, "").slice(0, 2))
-                }
-                onKeyDown={(e) => e.key === "Enter" && goNext()}
-                placeholder="25"
-                autoFocus
-                className="w-full pl-5 pr-11 py-3.5 bg-slate-50 border border-slate-200 focus:border-blue-500 focus:bg-white rounded-2xl outline-none text-base font-semibold text-slate-900 transition-all"
-              />
-              <span className="absolute right-5 top-1/2 -translate-y-1/2 text-[12px] font-bold text-slate-400 pointer-events-none">
-                세
+          <footer className="px-screen pb-10 pt-4 shrink-0 border-t border-slate-50">
+            <button
+              onClick={() => go("search")}
+              className="w-full h-14 rounded-2xl font-bold text-[15px] flex items-center justify-center gap-2 transition-all active:scale-[0.98] bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-600/25"
+            >
+              맞춤 정책 보러가기
+            </button>
+          </footer>
+        </>
+      ) : (
+        <>
+          {/* Step indicator: segmented progress bar + step count */}
+          <div className="px-screen pt-6 pb-1 shrink-0">
+            <div className="flex items-center gap-2 mb-4">
+              <div className="flex-1 flex gap-1.5">
+                {Array.from({ length: TOTAL_STEPS }).map((_, i) => (
+                  <div
+                    key={i}
+                    className={`h-1.5 flex-1 rounded-full transition-colors duration-300 ${
+                      i < step ? "bg-blue-600" : "bg-slate-100"
+                    }`}
+                  />
+                ))}
+              </div>
+              <span className="text-[11px] font-extrabold text-blue-600 tabular-nums shrink-0">
+                {step}
+                <span className="text-slate-300">/{TOTAL_STEPS}</span>
               </span>
             </div>
+            <h2 className="text-[26px] font-extrabold text-slate-900 leading-snug tracking-tight whitespace-pre-line">
+              {current.q}
+            </h2>
+            <p className="text-[13px] text-slate-400 font-medium mt-1.5">
+              {current.hint}
+            </p>
           </div>
-        )}
 
-        {/* Step 2: 거주 지역 */}
-        {step === 2 && (
-          <div className="pt-2 relative">
-            <button
-              onClick={() => setIsCityOpen((v) => !v)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !isCityOpen && city) {
-                  e.preventDefault();
-                  goNext();
-                }
-                if (e.key === "Escape") setIsCityOpen(false);
-              }}
-              className={`w-full flex items-center justify-between px-5 py-4 rounded-2xl text-[15px] font-semibold transition-all text-left focus:outline-none border ${
-                isCityOpen
-                  ? "border-blue-500 bg-white"
-                  : "border-slate-200 bg-slate-50 hover:border-blue-400 hover:bg-white"
-              }`}
-            >
-              <span className={city ? "text-slate-900" : "text-slate-400"}>
-                {city || "시/도 선택"}
-              </span>
-              <Icon
-                className={`w-5 h-5 text-slate-400 transition-transform duration-200 ${isCityOpen ? "rotate-180 text-blue-500" : ""}`}
-              >
-                <IconPath d="M19 9l-7 7-7-7" />
-              </Icon>
-            </button>
-            {isCityOpen && (
-              <div
-                ref={dropdownRef}
-                onKeyDown={(e) => {
-                  if (e.key === "Escape") {
-                    setIsCityOpen(false);
-                  }
-                }}
-                className="absolute top-full left-0 right-0 mt-1.5 max-h-56 overflow-y-auto scroll-stable bg-white border border-slate-100 rounded-2xl shadow-xl z-20 divide-y divide-slate-50"
-              >
-                {CITY_OPTIONS.map((c) => (
-                  <button
-                    key={c}
-                    data-selected={city === c ? "true" : undefined}
-                    onClick={() => {
-                      setCity(c);
-                      setIsCityOpen(false);
-                    }}
-                    className={`w-full text-left px-5 py-3 text-[13px] font-semibold hover:bg-slate-50 transition-colors focus:bg-blue-50 focus:outline-none ${
-                      city === c ? "text-blue-600 font-bold" : "text-slate-700"
-                    }`}
+          {/* Content */}
+          <div
+            key={step}
+            className="flex-1 min-h-0 overflow-y-auto scroll-stable px-screen pb-4 animate-fade-in"
+          >
+            {/* Step 1: 나이 */}
+            {step === 1 && (
+              <div className="pt-2">
+                <div className="relative w-full">
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    maxLength={2}
+                    value={age}
+                    onChange={(e) =>
+                      setAge(e.target.value.replace(/\D/g, "").slice(0, 2))
+                    }
+                    onKeyDown={(e) => e.key === "Enter" && goNext()}
+                    placeholder="25"
+                    autoFocus
+                    className="w-full pl-5 pr-11 py-3.5 bg-slate-50 border border-slate-200 focus:border-blue-500 focus:bg-white rounded-2xl outline-none text-base font-semibold text-slate-900 transition-all"
+                  />
+                  <span className="absolute right-5 top-1/2 -translate-y-1/2 text-[12px] font-bold text-slate-400 pointer-events-none">
+                    세
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {/* Step 2: 거주 지역 */}
+            {step === 2 && (
+              <div className="pt-2 relative">
+                <button
+                  onClick={() => setIsCityOpen((v) => !v)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !isCityOpen && city) {
+                      e.preventDefault();
+                      goNext();
+                    }
+                    if (e.key === "Escape") setIsCityOpen(false);
+                  }}
+                  className={`w-full flex items-center justify-between px-5 py-4 rounded-2xl text-[15px] font-semibold transition-all text-left focus:outline-none border ${
+                    isCityOpen
+                      ? "border-blue-500 bg-white"
+                      : "border-slate-200 bg-slate-50 hover:border-blue-400 hover:bg-white"
+                  }`}
+                >
+                  <span className={city ? "text-slate-900" : "text-slate-400"}>
+                    {city || "시/도 선택"}
+                  </span>
+                  <Icon
+                    className={`w-5 h-5 text-slate-400 transition-transform duration-200 ${isCityOpen ? "rotate-180 text-blue-500" : ""}`}
                   >
-                    {c}
-                  </button>
+                    <IconPath d="M19 9l-7 7-7-7" />
+                  </Icon>
+                </button>
+                {isCityOpen && (
+                  <div
+                    ref={dropdownRef}
+                    onKeyDown={(e) => {
+                      if (e.key === "Escape") {
+                        setIsCityOpen(false);
+                      }
+                    }}
+                    className="absolute top-full left-0 right-0 mt-1.5 max-h-56 overflow-y-auto scroll-stable bg-white border border-slate-100 rounded-2xl shadow-xl z-20 divide-y divide-slate-50"
+                  >
+                    {CITY_OPTIONS.map((c) => (
+                      <button
+                        key={c}
+                        data-selected={city === c ? "true" : undefined}
+                        onClick={() => {
+                          setCity(c);
+                          setIsCityOpen(false);
+                        }}
+                        className={`w-full text-left px-5 py-3 text-[13px] font-semibold hover:bg-slate-50 transition-colors focus:bg-blue-50 focus:outline-none ${
+                          city === c
+                            ? "text-blue-600 font-bold"
+                            : "text-slate-700"
+                        }`}
+                      >
+                        {c}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Step 3: 관심 분야 */}
+            {step === 3 && (
+              <div className="pt-2 flex flex-col gap-2.5">
+                {CATEGORIES.map(({ key, label, desc }) => {
+                  const active = selectedCategories[key];
+                  const style = CATEGORY_STYLE[key];
+                  return (
+                    <OptionButton
+                      key={key}
+                      label={label}
+                      desc={desc}
+                      active={active}
+                      onClick={() => toggleCategory(key)}
+                      icon={
+                        <div
+                          className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${style.color}`}
+                        >
+                          <Icon className="w-5 h-5">{style.path}</Icon>
+                        </div>
+                      }
+                    />
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Step 4: 현재 상황 (단일 선택) */}
+            {step === 4 && (
+              <div className="pt-2 flex flex-col gap-2.5">
+                {EMPLOYMENT_OPTIONS.map(({ slug, label }) => (
+                  <OptionButton
+                    key={slug}
+                    label={label}
+                    active={employmentStatus === slug}
+                    onClick={() => setEmploymentStatus(slug)}
+                  />
                 ))}
               </div>
             )}
-          </div>
-        )}
 
-        {/* Step 3: 관심 분야 */}
-        {step === 3 && (
-          <div className="pt-2 flex flex-col gap-2.5">
-            {CATEGORIES.map(({ key, label, desc }) => {
-              const active = selectedCategories[key];
-              const style = CATEGORY_STYLE[key];
-              return (
+            {/* Step 5: 학력 (단일 선택) */}
+            {step === 5 && (
+              <div className="pt-2 flex flex-col gap-2.5">
+                {EDUCATION_OPTIONS.map(({ slug, label }) => (
+                  <OptionButton
+                    key={slug}
+                    label={label}
+                    active={educationLevel === slug}
+                    onClick={() => setEducationLevel(slug)}
+                  />
+                ))}
+              </div>
+            )}
+
+            {/* Step 6: 해당되는 조건 (복수 선택) + 닉네임 + 약관 동의 */}
+            {step === 6 && (
+              <div className="pt-2 flex flex-col gap-2.5">
                 <OptionButton
-                  key={key}
-                  label={label}
-                  desc={desc}
-                  active={active}
-                  onClick={() => toggleCategory(key)}
-                  icon={
-                    <div
-                      className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${style.color}`}
-                    >
-                      <Icon className="w-5 h-5">{style.path}</Icon>
-                    </div>
-                  }
+                  label="없음"
+                  active={specialConditions.length === 0}
+                  onClick={() => setSpecialConditions([])}
+                  shape="square"
                 />
-              );
-            })}
-          </div>
-        )}
-
-        {/* Step 4: 현재 상황 (단일 선택) */}
-        {step === 4 && (
-          <div className="pt-2 flex flex-col gap-2.5">
-            {EMPLOYMENT_OPTIONS.map(({ slug, label }) => (
-              <OptionButton
-                key={slug}
-                label={label}
-                active={employmentStatus === slug}
-                onClick={() => setEmploymentStatus(slug)}
-              />
-            ))}
-          </div>
-        )}
-
-        {/* Step 5: 학력 (단일 선택) */}
-        {step === 5 && (
-          <div className="pt-2 flex flex-col gap-2.5">
-            {EDUCATION_OPTIONS.map(({ slug, label }) => (
-              <OptionButton
-                key={slug}
-                label={label}
-                active={educationLevel === slug}
-                onClick={() => setEducationLevel(slug)}
-              />
-            ))}
-          </div>
-        )}
-
-        {/* Step 6: 해당되는 조건 (복수 선택) + 닉네임 + 약관 동의 */}
-        {step === 6 && (
-          <div className="pt-2 flex flex-col gap-2.5">
-            <OptionButton
-              label="없음"
-              active={specialConditions.length === 0}
-              onClick={() => setSpecialConditions([])}
-              shape="square"
-            />
-            {CONDITION_OPTIONS.map(({ slug, label }) => (
-              <OptionButton
-                key={slug}
-                label={label}
-                active={specialConditions.includes(slug)}
-                onClick={() => toggleCondition(slug)}
-                shape="square"
-              />
-            ))}
-            <button
-              onClick={() => setTermsAgreed((v) => !v)}
-              className="flex items-start gap-3 text-left p-4 bg-slate-50 border border-slate-200 rounded-2xl hover:bg-white transition-colors"
-            >
-              <SelectIndicator
-                active={termsAgreed}
-                shape="square"
-                className="mt-0.5"
-              />
-              <span className="text-[13px] text-slate-600 font-medium leading-relaxed">
-                서비스 이용약관 및 개인정보 처리방침에 동의합니다{" "}
-                <span className="text-blue-600 font-bold">(필수)</span>
-              </span>
-            </button>
-            {error && (
-              <p className="text-xs text-rose-500 font-semibold">{error}</p>
+                {CONDITION_OPTIONS.map(({ slug, label }) => (
+                  <OptionButton
+                    key={slug}
+                    label={label}
+                    active={specialConditions.includes(slug)}
+                    onClick={() => toggleCondition(slug)}
+                    shape="square"
+                  />
+                ))}
+                <button
+                  onClick={() => setTermsAgreed((v) => !v)}
+                  className="flex items-start gap-3 text-left p-4 bg-slate-50 border border-slate-200 rounded-2xl hover:bg-white transition-colors"
+                >
+                  <SelectIndicator
+                    active={termsAgreed}
+                    shape="square"
+                    className="mt-0.5"
+                  />
+                  <span className="text-[13px] text-slate-600 font-medium leading-relaxed">
+                    서비스 이용약관 및 개인정보 처리방침에 동의합니다{" "}
+                    <span className="text-blue-600 font-bold">(필수)</span>
+                  </span>
+                </button>
+                {error && (
+                  <p className="text-xs text-rose-500 font-semibold">{error}</p>
+                )}
+              </div>
             )}
           </div>
-        )}
-      </div>
 
-      {/* Footer */}
-      <footer className="px-screen pb-10 pt-4 shrink-0 border-t border-slate-50">
-        <button
-          onClick={goNext}
-          disabled={!canNext() || isSubmitting}
-          className={`w-full h-14 rounded-2xl font-bold text-[15px] flex items-center justify-center gap-2 transition-all active:scale-[0.98] ${
-            canNext() && !isSubmitting
-              ? "bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-600/25"
-              : "bg-blue-200 text-white cursor-not-allowed"
-          }`}
-        >
-          {isSubmitting ? (
-            <svg
-              className="w-5 h-5 animate-spin"
-              fill="none"
-              viewBox="0 0 24 24"
+          {/* Footer */}
+          <footer className="px-screen pb-10 pt-4 shrink-0 border-t border-slate-50">
+            {STEP_MASCOTS[step] && <StepMascot src={STEP_MASCOTS[step]} />}
+            <button
+              onClick={goNext}
+              disabled={!canNext() || isSubmitting}
+              className={`w-full h-14 rounded-2xl font-bold text-[15px] flex items-center justify-center gap-2 transition-all active:scale-[0.98] ${
+                canNext() && !isSubmitting
+                  ? "bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-600/25"
+                  : "bg-blue-200 text-white cursor-not-allowed"
+              }`}
             >
-              <circle
-                className="opacity-25"
-                cx="12"
-                cy="12"
-                r="10"
-                stroke="currentColor"
-                strokeWidth="4"
-              />
-              <path
-                className="opacity-75"
-                fill="currentColor"
-                d="M4 12a8 8 0 018-8v8H4z"
-              />
-            </svg>
-          ) : step < TOTAL_STEPS ? (
-            "다음 →"
-          ) : isEditMode ? (
-            "수정 완료"
-          ) : (
-            "시작하기"
-          )}
-        </button>
-      </footer>
+              {isSubmitting ? (
+                <svg
+                  className="w-5 h-5 animate-spin"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                >
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  />
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8v8H4z"
+                  />
+                </svg>
+              ) : step < TOTAL_STEPS ? (
+                "다음 →"
+              ) : isEditMode ? (
+                "수정 완료"
+              ) : (
+                "시작하기"
+              )}
+            </button>
+          </footer>
+        </>
+      )}
     </div>
   );
 }
