@@ -8,6 +8,7 @@ import { useAuthStore } from "@/lib/store/authStore";
 import { useUiStore } from "@/lib/store/uiStore";
 import { useFilterStore, DEFAULT_FILTERS } from "@/lib/store/filterStore";
 import { usePolicyList, sortPoliciesByDeadline } from "@/lib/api/policy";
+import { useChuncheonPolicyList } from "@/lib/api/chuncheon";
 import PolicyCard from "@/app/components/ui/PolicyCard";
 import HeroCarousel from "@/app/components/ui/HeroCarousel";
 import HeroBannerSlide from "@/app/components/ui/HeroBannerSlide";
@@ -52,8 +53,19 @@ export default function HomeScreen({ onNavigate }: ScreenProps) {
   });
   const sortedItems = data?.items ? sortPoliciesByDeadline(data.items) : [];
 
+  const {
+    data: chuncheonData,
+    error: chuncheonError,
+    isLoading: isChuncheonLoading,
+  } = useChuncheonPolicyList({ sort: "deadline", size: 4, applicable: true });
+  const chuncheonItems = chuncheonData?.items ? sortPoliciesByDeadline(chuncheonData.items) : [];
+
   const handleCardClick = (plcy_no: string) => {
     onNavigate?.(`detail?id=${plcy_no}`);
+  };
+
+  const handleChuncheonCardClick = (plcy_no: string) => {
+    onNavigate?.(`detail?id=${plcy_no}&src=chuncheon`);
   };
 
   return (
@@ -265,6 +277,52 @@ export default function HomeScreen({ onNavigate }: ScreenProps) {
             ))}
           </section>
         </ScreenBleed>
+
+        {/* 춘천시 정책 섹션 — 별도 배포체(대회 전용 API) 프록시 데이터, 로딩/에러가 아래 섹션에 영향 없도록 격리 */}
+        {!chuncheonError && (isChuncheonLoading || chuncheonItems.length > 0) && (
+          <section className="py-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-base font-bold text-slate-900">
+                오늘의 춘천 정책
+              </h3>
+            </div>
+
+            <div className="space-y-4">
+              {isChuncheonLoading
+                ? Array.from({ length: 2 }).map((_, i) => (
+                    <div
+                      key={i}
+                      className="p-5 bg-white border border-slate-100 rounded-2xl animate-pulse"
+                    >
+                      <div className="flex justify-between mb-3">
+                        <div className="h-5 w-14 bg-slate-200 rounded-full" />
+                        <div className="h-5 w-10 bg-slate-200 rounded-full" />
+                      </div>
+                      <div className="space-y-2">
+                        <div className="h-4 bg-slate-200 rounded-md w-11/12" />
+                        <div className="h-3 bg-slate-200 rounded-md w-7/12" />
+                      </div>
+                    </div>
+                  ))
+                : chuncheonItems.map((policy) => (
+                    <PolicyCard
+                      key={policy.plcy_no}
+                      policy={policy}
+                      isBookmarked={false}
+                      onToggleBookmark={() => {}}
+                      onClick={() => handleChuncheonCardClick(policy.plcy_no)}
+                      source="chuncheon"
+                      showCategory={true}
+                      showLocation={true}
+                      showActionText={false}
+                      showDday={true}
+                      showSummary={true}
+                      showBookmark={false}
+                    />
+                  ))}
+            </div>
+          </section>
+        )}
 
         {/* Policy List Section */}
         <section className="py-6 flex-1">
