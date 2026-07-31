@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 
 interface ScreenProps {
@@ -14,11 +15,12 @@ export default function Error404Screen({ onNavigate }: ScreenProps) {
       {/* Main Illustration & Error Text */}
       <div className="flex-1 overflow-y-auto scroll-stable flex flex-col items-center justify-center px-screen py-10 text-center min-h-[350px]">
         
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
+        <Image
           src="/images/mascot/error.png"
           alt=""
           draggable={false}
+          width={480}
+          height={320}
           className="w-44 h-auto object-contain select-none pointer-events-none mb-6"
         />
 

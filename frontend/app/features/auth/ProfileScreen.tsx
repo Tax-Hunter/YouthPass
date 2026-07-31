@@ -3,6 +3,7 @@
 import React from "react";
 import { useRouter } from "next/navigation";
 import PromoBanner from "@/app/components/ui/PromoBanner";
+import VisitorBadge from "@/app/components/ui/VisitorBadge";
 import { useLogout } from "@/lib/useLogout";
 import { useAuthStore } from "@/lib/store/authStore";
 import { useUiStore } from "@/lib/store/uiStore";
@@ -79,10 +80,7 @@ export default function ProfileScreen({ onNavigate, onClose }: ScreenProps) {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
                 </svg>
               </h2>
-              <p className="text-[10px] text-emerald-500 font-extrabold flex items-center gap-1">
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 block" />
-                로그인됨
-              </p>
+              <VisitorBadge />
             </div>
           </div>
         )}

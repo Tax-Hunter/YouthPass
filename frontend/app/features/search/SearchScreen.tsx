@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
+import Image from "next/image";
 import dynamic from "next/dynamic";
 import { useBookmarkStore } from "@/lib/store/bookmarkStore";
 import { useAuthStore } from "@/lib/store/authStore";
@@ -20,11 +21,10 @@ import PolicyCard from "@/app/components/ui/PolicyCard";
 import FloatingFilterButton from "@/app/components/ui/FloatingFilterButton";
 import ScreenContent from "@/app/components/layout/ScreenContent";
 
-// 필터/설문 오버레이는 열 때만 필요 — 정책 목록 초기 로드 번들에서 제외
+// 필터 오버레이는 열 때만 필요 — 정책 목록 초기 로드 번들에서 제외
 const FilterScreen = dynamic(
   () => import("@/app/features/filter/FilterScreen"),
 );
-const SurveyScreen = dynamic(() => import("@/app/features/auth/SurveyScreen"));
 
 interface ScreenProps {
   onNavigate?: (screenId: string) => void;
@@ -43,7 +43,6 @@ export default function SearchScreen({ onNavigate }: ScreenProps) {
   const { recentSearches, addRecentSearch, clearRecentSearches } =
     useRecentSearchStore();
   const [isFilterOpen, setIsFilterOpen] = useState(false);
-  const [isSurveyOpen, setIsSurveyOpen] = useState(false);
   const [showClosedOnly, setShowClosedOnly] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -55,8 +54,7 @@ export default function SearchScreen({ onNavigate }: ScreenProps) {
   // 검색을 연 이후엔 설문 개인화를 이 화면 안에서만 숨김 — 전역 상태는 건드리지 않아
   // 정책목록 등 다른 화면의 "첫 진입 시 설문 필터링" 동작에 영향 주지 않음
   const [searchDismissedSurvey, setSearchDismissedSurvey] = useState(false);
-  // 설문을 새로 완료하면(같은 화면에서 오버레이로 완료해 리마운트가 안 일어나는 경우 포함)
-  // 이전에 검색을 열어 꺼뒀던 dismiss 상태를 초기화 — 렌더 중 비교라 useEffect 없이 처리
+  // 설문을 새로 완료하면 이전에 검색을 열어 꺼뒀던 dismiss 상태를 초기화 — 렌더 중 비교라 useEffect 없이 처리
   const [prevSurveyAgeActive, setPrevSurveyAgeActive] =
     useState(surveyAgeActive);
   if (surveyAgeActive !== prevSurveyAgeActive) {
@@ -70,7 +68,7 @@ export default function SearchScreen({ onNavigate }: ScreenProps) {
       openLoginModal();
       return;
     }
-    setIsSurveyOpen(true);
+    onNavigate?.("survey");
   };
 
   const openGoogleForm = () => {
@@ -539,11 +537,12 @@ export default function SearchScreen({ onNavigate }: ScreenProps) {
               </div>
             ) : sidoLocalItems.length === 0 && sidoNationalItems.length === 0 ? (
               <div className="text-center py-10 flex flex-col items-center gap-2">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
+                <Image
                   src="/images/mascot/search.png"
                   alt=""
                   draggable={false}
+                  width={320}
+                  height={213}
                   className="w-20 h-auto object-contain select-none pointer-events-none mb-1"
                 />
                 <p className="text-xs font-bold text-slate-400">
@@ -634,11 +633,12 @@ export default function SearchScreen({ onNavigate }: ScreenProps) {
               ))
             ) : !sortedItems || sortedItems.length === 0 ? (
               <div className="text-center py-10 flex flex-col items-center gap-2">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
+                <Image
                   src="/images/mascot/search.png"
                   alt=""
                   draggable={false}
+                  width={320}
+                  height={213}
                   className="w-20 h-auto object-contain select-none pointer-events-none mb-1"
                 />
                 <p className="text-xs font-bold text-slate-400">
@@ -681,12 +681,6 @@ export default function SearchScreen({ onNavigate }: ScreenProps) {
       {isFilterOpen && (
         <div className="absolute inset-0 z-50">
           <FilterScreen onNavigate={() => setIsFilterOpen(false)} />
-        </div>
-      )}
-
-      {isSurveyOpen && (
-        <div className="absolute inset-0 z-50 bg-white">
-          <SurveyScreen onNavigate={() => setIsSurveyOpen(false)} />
         </div>
       )}
     </div>
