@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import Image from "next/image";
 
 type HeroBannerTheme = "blue" | "indigo";
 
@@ -23,10 +24,11 @@ interface HeroBannerSlideProps {
   theme: HeroBannerTheme;
   badge?: React.ReactNode;
   title: React.ReactNode;
-  subtitle: React.ReactNode;
+  subtitle?: React.ReactNode;
   buttonLabel: string;
   onButtonClick: () => void;
   illustration?: React.ReactNode;
+  mascotImageSrc?: string;
 }
 
 export default function HeroBannerSlide({
@@ -37,6 +39,7 @@ export default function HeroBannerSlide({
   buttonLabel,
   onButtonClick,
   illustration,
+  mascotImageSrc,
 }: HeroBannerSlideProps) {
   const styles = THEME_STYLES[theme];
 
@@ -49,10 +52,22 @@ export default function HeroBannerSlide({
       <div className="absolute -top-12.5 -right-12.5 w-40 h-40 bg-white/10 rounded-full blur-2xl" />
       <div className={`absolute -bottom-7.5 -left-5 w-28 h-28 ${styles.accent} rounded-full blur-xl`} />
 
+      {mascotImageSrc && (
+        <Image
+          src={mascotImageSrc}
+          alt=""
+          width={280}
+          height={280}
+          className="absolute -bottom-8 -right-2 z-0 h-56 w-56 object-contain pointer-events-none select-none"
+        />
+      )}
+
       <div className="relative z-10 space-y-2">
         {badge}
         <h2 className="text-[22px] font-bold leading-tight">{title}</h2>
-        <p className="text-xs text-white/80 leading-relaxed font-medium">{subtitle}</p>
+        {subtitle && (
+          <p className="text-xs text-white/80 leading-relaxed font-medium">{subtitle}</p>
+        )}
       </div>
 
       <button
