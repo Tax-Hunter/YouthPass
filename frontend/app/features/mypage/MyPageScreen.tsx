@@ -8,6 +8,7 @@ import { useFilterStore } from "@/lib/store/filterStore";
 import { useUiStore } from "@/lib/store/uiStore";
 import { useLogout } from "@/lib/useLogout";
 import EditProfileModal from "@/app/components/ui/EditProfileModal";
+import VisitorBadge from "@/app/components/ui/VisitorBadge";
 import ScreenContent, { ScreenBleed } from "@/app/components/layout/ScreenContent";
 
 interface ScreenProps {
@@ -46,9 +47,6 @@ export default function MyPageScreen({ onNavigate }: ScreenProps) {
     ? (user.nickname ?? user.email) + " 님"
     : "닉네임 님";
 
-  const joinedAt = user?.created_at
-    ? user.created_at.slice(0, 10)
-    : null;
 
   return (
     <div className="relative flex flex-col h-full bg-white text-slate-800 font-sans select-none overflow-hidden">
@@ -77,13 +75,11 @@ export default function MyPageScreen({ onNavigate }: ScreenProps) {
               displayName
             )}
           </h2>
-          <p className="text-xs text-slate-400 font-semibold">
-            {isLoading ? (
-              <span className="inline-block w-32 h-3 bg-slate-200 rounded animate-pulse" />
-            ) : joinedAt ? (
-              `가입일 ${joinedAt}`
-            ) : null}
-          </p>
+          {isLoading ? (
+            <span className="inline-block w-32 h-3 bg-slate-200 rounded animate-pulse" />
+          ) : (
+            <VisitorBadge />
+          )}
         </div>
         {!isLoading && user && (
           <button
