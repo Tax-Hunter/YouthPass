@@ -1,6 +1,7 @@
 import { useQuery, useInfiniteQuery, keepPreviousData, type QueryClient } from "@tanstack/react-query";
 import { mockDetail, MOCK_CARDS } from "./mock";
 import { useAuthStore } from "@/lib/store/authStore";
+import type { PolicySource } from "@/lib/types";
 
 const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK === "true";
 
@@ -130,7 +131,7 @@ function buildPolicyQuery(params: PolicyListParams & { page?: number }) {
   return query;
 }
 
-export type PolicyDetailSource = "policy" | "chuncheon";
+export type PolicyDetailSource = PolicySource;
 
 function policyDetailQueryOptions(policyId: string, src: PolicyDetailSource) {
   return {
