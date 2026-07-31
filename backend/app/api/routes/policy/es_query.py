@@ -73,6 +73,7 @@ def build_search_body(
     page: int,
     size: int,
     today_kst: date,
+    nationwide: bool = False,
 ) -> dict:
     """파라미터 → ES 검색 요청 dict. 필터 의미론은 _apply_base_filters와 1:1 (phase1 8절 변환표)."""
     filters: List[dict] = [{"term": {"is_active": True}}]
@@ -81,7 +82,10 @@ def build_search_body(
     if keywords:
         # PG: Policy.keywords.overlap(...) — 배열 교집합 비공(ANY-of) = terms
         filters.append({"terms": {"keywords": keywords}})
-    if sido:
+    if nationwide:
+        # PG: nationwide=True → sido 무시하고 is_nationwide만
+        filters.append({"term": {"is_nationwide": True}})
+    elif sido:
         # PG: is_nationwide=TRUE OR region_sido @> [sido] — 전국 정책 항상 포함
         filters.append({"bool": {
             "should": [
@@ -162,11 +166,13 @@ def search_policy_ids(
     page: int,
     size: int,
     today_kst: date,
+    nationwide: bool = False,
 ) -> Tuple[List[str], int]:
     """ES 검색 실행 → (plcy_no 순서열, 정확한 total). 문서 _id가 plcy_no라 _source 불필요."""
     body = build_search_body(
         q_text=q_text, category=category, keywords=keywords, sido=sido, age=age,
         applicable=applicable, sort=sort, page=page, size=size, today_kst=today_kst,
+        nationwide=nationwide,
     )
     # ES 8 클라이언트는 명명 인자를 받는다 — 값은 전부 body에서 유도해 단일 원천을 유지한다.
     res = es.search(

@@ -27,6 +27,11 @@ export const useAuthStore = create<AuthState>((set) => ({
   setAccessToken: (accessToken) => set({ accessToken }),
 
   initAuth: async () => {
+    // 구버전(localStorage 기반 토큰 저장) 코드로 로그인했던 사용자의 잔존 값 정리.
+    // 신버전은 이 키들을 더 이상 읽거나 쓰지 않으므로 존재 여부만 보고 무조건 삭제.
+    localStorage.removeItem("access_token");
+    localStorage.removeItem("refresh_token");
+
     // refresh_token은 HttpOnly 쿠키로만 존재하므로, 부팅 시 항상 쿠키 기반으로 access token을 재발급받아 세션을 복구
     try {
       const refreshRes = await fetch(`${BASE}/auth/post/refresh`, {
