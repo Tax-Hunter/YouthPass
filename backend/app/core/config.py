@@ -7,7 +7,7 @@ class Settings(BaseSettings):
     VERSION: str = "0.1.0"
     API_PREFIX: str = "/api"
 
-    # dev면 로컬 HTTP 환경을 위해 쿠키 Secure 속성을 끔. production은 항상 Secure+SameSite=None
+    # dev면 로컬 HTTP 환경을 위해 쿠키 Secure 속성을 끔. production은 항상 Secure (SameSite는 Lax 고정)
     ENV: str = Field(default="production", description="dev|production - refresh_token 쿠키 Secure 속성 분기용")
 
     DATABASE_URL: str = Field(..., description="PostgreSQL connection URL")
