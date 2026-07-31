@@ -16,7 +16,7 @@ from app.core.security import create_access_token, generate_refresh_token, hash_
 from app.db.session import get_db
 from app.db.models.refresh_token import RefreshToken
 from app.db.models.user import User
-from app.schemas.auth import AccessTokenResponse
+from app.schemas.auth import AccessTokenResponse, ExchangeRefreshTokenRequest
 
 router = APIRouter()
 
@@ -36,6 +36,21 @@ def _set_refresh_token_cookie(response: Response, raw_refresh_token: str) -> Non
         path=REFRESH_TOKEN_COOKIE_PATH,
         max_age=settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
     )
+
+
+def _rotate_refresh_token(db: Session, db_token: RefreshToken) -> str:
+    """기존 Refresh Token 레코드를 폐기하고 새 레코드를 발급해 원문을 반환한다 (재사용 탐지 대비 회전)."""
+    user_id = db_token.user_id
+    db.delete(db_token)
+    new_raw_refresh_token = generate_refresh_token()
+    expires_at = datetime.now(timezone.utc) + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
+    db.add(RefreshToken(
+        user_id=user_id,
+        token_hash=hash_token(new_raw_refresh_token),
+        expires_at=expires_at,
+    ))
+    db.commit()
+    return new_raw_refresh_token
 
 
 @router.get("/get/google-login")
@@ -117,15 +132,22 @@ def google_callback(code: str, state: str = "", db: Session = Depends(get_db)):
     ))
     db.commit()
 
-    # 5. 프론트엔드로 리다이렉트 (access_token만 쿼리로 전달, refresh_token은 HttpOnly 쿠키로 발급)
+    # 5. 프론트엔드로 리다이렉트.
+    # refresh_token 쿠키는 이 302 리다이렉트 응답에서 바로 발급하지 않는다 — iOS Safari의 ITP(Intelligent
+    # Tracking Prevention)는 Google→백엔드→프론트로 이어지는 자동 리다이렉트 체인 중간에 설정된 쿠키를
+    # 짧은 시간 내 삭제하는 휴리스틱(cross-site bounce tracking 완화)을 갖고 있어, 여기서 쿠키를 심으면
+    # iOS Safari에서만 로그인 직후 세션이 삭제되는 문제가 재현된다.
+    # 대신 원문 refresh_token을 쿼리로 프론트에 1회 전달하고, 프론트가 자동 리다이렉트가 아닌 페이지
+    # 로드 후 별도 fetch(POST /auth/post/exchange)로 쿠키를 발급받도록 한다. 이 원문은 exchange 시점에
+    # 즉시 회전(폐기 후 재발급)되므로 URL(브라우저 히스토리·서버 로그 등)에 잠시 노출되더라도 exchange가
+    # 끝난 뒤에는 무효한 값이 된다.
     redirect_url = (
         f"{frontend_url}/auth/callback"
         f"?access_token={access_token}"
+        f"&refresh_token={raw_refresh_token}"
         f"&is_new_user={str(is_new_user).lower()}"
     )
-    response = RedirectResponse(url=redirect_url)
-    _set_refresh_token_cookie(response, raw_refresh_token)
-    return response
+    return RedirectResponse(url=redirect_url)
 
 
 @router.post("/post/refresh", response_model=AccessTokenResponse)
@@ -148,21 +170,38 @@ def refresh_access_token(
         db.commit()
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="만료된 Refresh Token입니다.")
 
-    # 토큰 회전: 기존 레코드 폐기 후 신규 발급 (재사용 탐지 대비)
     user_id = db_token.user_id
-    db.delete(db_token)
-
-    new_raw_refresh_token = generate_refresh_token()
-    expires_at = datetime.now(timezone.utc) + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
-    db.add(RefreshToken(
-        user_id=user_id,
-        token_hash=hash_token(new_raw_refresh_token),
-        expires_at=expires_at,
-    ))
-    db.commit()
+    new_raw_refresh_token = _rotate_refresh_token(db, db_token)
 
     _set_refresh_token_cookie(response, new_raw_refresh_token)
     return AccessTokenResponse(access_token=create_access_token(str(user_id)))
+
+
+@router.post("/post/exchange", status_code=status.HTTP_204_NO_CONTENT)
+def exchange_refresh_token(
+    payload: ExchangeRefreshTokenRequest,
+    response: Response,
+    db: Session = Depends(get_db),
+):
+    """구글 로그인 콜백이 쿼리로 전달한 원문 refresh_token을 HttpOnly 쿠키로 교환 발급한다.
+
+    google_callback의 302 리다이렉트 응답이 아니라, 프론트가 /auth/callback 페이지 로드 후
+    직접 보내는 fetch 요청에서 쿠키를 심기 위한 전용 엔드포인트 — iOS Safari ITP의 리다이렉트
+    체인 쿠키 삭제 휴리스틱을 회피하기 위함.
+    """
+    token_hash = hash_token(payload.refresh_token)
+    db_token = db.query(RefreshToken).filter(RefreshToken.token_hash == token_hash).first()
+
+    if db_token is None:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="유효하지 않은 Refresh Token입니다.")
+
+    if db_token.expires_at.replace(tzinfo=timezone.utc) < datetime.now(timezone.utc):
+        db.delete(db_token)
+        db.commit()
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="만료된 Refresh Token입니다.")
+
+    new_raw_refresh_token = _rotate_refresh_token(db, db_token)
+    _set_refresh_token_cookie(response, new_raw_refresh_token)
 
 
 @router.post("/post/logout", status_code=status.HTTP_204_NO_CONTENT)

@@ -11,3 +11,7 @@ class TokenResponse(BaseModel):
 class AccessTokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
+
+
+class ExchangeRefreshTokenRequest(BaseModel):
+    refresh_token: str
