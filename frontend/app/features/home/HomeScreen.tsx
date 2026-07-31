@@ -79,7 +79,7 @@ export default function HomeScreen({ onNavigate }: ScreenProps) {
                     theme="indigo"
                     illustration={<ChuncheonSkylineIllustration />}
                     badge={
-                      <div className="flex items-center gap-1.5 text-[11px] font-semibold text-cyan-200">
+                      <div className="flex items-center gap-1.5 text-[11px] font-semibold text-orange-300">
                         <svg
                           viewBox="0 0 20 20"
                           fill="none"
@@ -91,7 +91,7 @@ export default function HomeScreen({ onNavigate }: ScreenProps) {
                           />
                           <circle cx="10" cy="7.6" r="2.2" fill="#1D4ED8" />
                         </svg>
-                        <span className="border-b border-cyan-200/60 pb-0.5">
+                        <span className="border-b border-orange-300/60 pb-0.5">
                           청년이 행복한 도시, 춘천
                         </span>
                       </div>
@@ -100,7 +100,7 @@ export default function HomeScreen({ onNavigate }: ScreenProps) {
                       <>
                         춘천 청년 정책,
                         <br />
-                        <span className="text-cyan-200">
+                        <span className="text-orange-300">
                           1분 만에 찾아보세요
                         </span>
                       </>
@@ -109,7 +109,7 @@ export default function HomeScreen({ onNavigate }: ScreenProps) {
                       <>
                         지금 신청 가능한
                         <br />
-                        <span className="font-bold text-cyan-200">
+                        <span className="font-bold text-orange-300">
                           춘천시 정책
                         </span>
                         을 추천해드려요.
