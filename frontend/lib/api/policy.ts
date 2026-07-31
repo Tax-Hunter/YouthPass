@@ -61,6 +61,7 @@ export interface PolicyDetailData {
 export interface PolicyCardData {
   plcy_no: string;
   plcy_nm: string;
+  source?: PolicySource;
   category?: string | null;
   region: string;
   org?: string | null;

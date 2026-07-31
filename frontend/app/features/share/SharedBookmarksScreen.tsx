@@ -4,6 +4,7 @@ import React, { useEffect } from "react";
 import { useSharedPolicies } from "@/lib/api/share";
 import PolicyCard from "@/app/components/ui/PolicyCard";
 import ScreenContent, { ScreenBleed } from "@/app/components/layout/ScreenContent";
+import type { PolicySource } from "@/lib/types";
 
 interface ScreenProps {
   code: string;
@@ -18,8 +19,8 @@ export default function SharedBookmarksScreen({ code, onNavigate }: ScreenProps)
     if (error) onNavigate?.("404");
   }, [error, onNavigate]);
 
-  const handleCardClick = (plcy_no: string) => {
-    onNavigate?.(`detail?id=${plcy_no}`);
+  const handleCardClick = (plcy_no: string, source: PolicySource) => {
+    onNavigate?.(`detail?id=${plcy_no}&src=${source}`);
   };
 
   return (
@@ -53,11 +54,12 @@ export default function SharedBookmarksScreen({ code, onNavigate }: ScreenProps)
         ) : (
           data.items.map((policy) => (
             <PolicyCard
-              key={policy.plcy_no}
+              key={`${policy.source ?? "policy"}:${policy.plcy_no}`}
               policy={policy}
+              source={policy.source ?? "policy"}
               isBookmarked={false}
               onToggleBookmark={() => {}}
-              onClick={() => handleCardClick(policy.plcy_no)}
+              onClick={() => handleCardClick(policy.plcy_no, policy.source ?? "policy")}
               showCategory={true}
               showLocation={true}
               showActionText={false}
