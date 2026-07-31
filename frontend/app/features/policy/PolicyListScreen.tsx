@@ -15,9 +15,8 @@ import { cityToSido } from "@/lib/sidoMap";
 import PolicyCard from "@/app/components/ui/PolicyCard";
 import FloatingFilterButton from "@/app/components/ui/FloatingFilterButton";
 
-// 필터/설문 오버레이는 열 때만 필요 — 정책 목록 초기 로드 번들에서 제외
+// 필터 오버레이는 열 때만 필요 — 정책 목록 초기 로드 번들에서 제외
 const FilterScreen = dynamic(() => import("@/app/features/filter/FilterScreen"));
-const SurveyScreen = dynamic(() => import("@/app/features/auth/SurveyScreen"));
 
 interface ScreenProps {
   onNavigate?: (screenId: string) => void;
@@ -25,7 +24,6 @@ interface ScreenProps {
 
 export default function PolicyListScreen({ onNavigate }: ScreenProps) {
   const [isFilterOpen, setIsFilterOpen] = useState(false);
-  const [isSurveyOpen, setIsSurveyOpen] = useState(false);
   const { isBookmarked, toggle: toggleBookmark } = useBookmarkStore();
   const { filters, filterApplied, surveyAgeActive, _hasHydrated } = useFilterStore();
   const { user } = useAuthStore();
@@ -36,7 +34,7 @@ export default function PolicyListScreen({ onNavigate }: ScreenProps) {
       openLoginModal();
       return;
     }
-    setIsSurveyOpen(true);
+    onNavigate?.("survey");
   };
 
   const hasSurvey = filters.age != null;
@@ -213,12 +211,6 @@ export default function PolicyListScreen({ onNavigate }: ScreenProps) {
       {isFilterOpen && (
         <div className="absolute inset-0 z-50">
           <FilterScreen onNavigate={() => setIsFilterOpen(false)} />
-        </div>
-      )}
-
-      {isSurveyOpen && (
-        <div className="absolute inset-0 z-50 bg-white">
-          <SurveyScreen onNavigate={() => setIsSurveyOpen(false)} />
         </div>
       )}
     </div>
