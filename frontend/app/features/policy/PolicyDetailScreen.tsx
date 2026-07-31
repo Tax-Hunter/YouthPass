@@ -46,7 +46,7 @@ export default function PolicyDetailScreen({ onNavigate }: ScreenProps) {
   const src = (searchParams.get("src") as PolicyDetailSource | null) ?? "policy";
   const { policy, isLoading, error } = usePolicyDetail(policyId, src);
 
-  const isFav = !!user && policy ? isBookmarked(policy.plcy_no) : false;
+  const isFav = !!user && policy ? isBookmarked(policy.plcy_no, src) : false;
   const hasLink = !!policy?.aply_url_addr;
   const isClosed = policy?.dday === "마감";
 
@@ -265,7 +265,7 @@ export default function PolicyDetailScreen({ onNavigate }: ScreenProps) {
       <div className="shrink-0 px-screen pt-4 border-t border-slate-100 bg-white flex items-center gap-3 pb-safe z-10">
         {!!user && (
           <button
-            onClick={() => policy && toggleBookmark(policy.plcy_no)}
+            onClick={() => policy && toggleBookmark(policy.plcy_no, src)}
             disabled={isLoading || !policy}
             className={`w-14 h-14 shrink-0 rounded-2xl border-2 flex items-center justify-center transition-all active:scale-90 disabled:opacity-40 disabled:cursor-not-allowed ${
               isFav
