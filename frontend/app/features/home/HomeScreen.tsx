@@ -1,7 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
-import dynamic from "next/dynamic";
+import React from "react";
 import { useRouter } from "next/navigation";
 import { useBookmarkStore } from "@/lib/store/bookmarkStore";
 import { useAuthStore } from "@/lib/store/authStore";
@@ -16,9 +15,6 @@ import ScreenContent, {
   ScreenBleed,
 } from "@/app/components/layout/ScreenContent";
 
-// 설문 오버레이는 열 때만 필요 — 랜딩 화면(첫 페인트) 번들에서 제외
-const SurveyScreen = dynamic(() => import("@/app/features/auth/SurveyScreen"));
-
 const FEEDBACK_SURVEY_URL = "https://forms.gle/EXpjA71nBUiNqaqJ7";
 
 interface ScreenProps {
@@ -31,14 +27,13 @@ export default function HomeScreen({ onNavigate }: ScreenProps) {
   const { user } = useAuthStore();
   const { openLoginModal } = useUiStore();
   const { saveFilters } = useFilterStore();
-  const [isSurveyOpen, setIsSurveyOpen] = useState(false);
 
   const openSurvey = () => {
     if (!user) {
       openLoginModal();
       return;
     }
-    setIsSurveyOpen(true);
+    onNavigate?.("survey");
   };
 
   const openFeedbackSurvey = () => {
@@ -336,17 +331,6 @@ export default function HomeScreen({ onNavigate }: ScreenProps) {
         </section>
       </ScreenContent>
       {/* /scroll wrapper */}
-
-      {isSurveyOpen && (
-        <div className="absolute inset-0 z-50 bg-white">
-          <SurveyScreen
-            onNavigate={(screenId) => {
-              setIsSurveyOpen(false);
-              if (screenId === "search") onNavigate?.("search");
-            }}
-          />
-        </div>
-      )}
     </div>
   );
 }
