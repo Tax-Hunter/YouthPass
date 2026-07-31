@@ -57,6 +57,10 @@ class Settings(BaseSettings):
     # 신청 URL이 없을 때 폴백할 온통청년 정책 상세 페이지 베이스
     YTH_DETAIL_URL_BASE: str = "https://www.youthcenter.go.kr/youthPolicy/ythPlcyTotalSearch/ythPlcyDetail"
 
+    # 춘천시 정책 데이터 전용 외부 API(대회용 별도 배포체) — /api/chuncheon 프록시 라우트가 사용
+    CHUNCHEON_API_BASE_URL: str = "https://testbackend-production-2e04.up.railway.app/api/chuncheon"
+    CHUNCHEON_API_TIMEOUT_S: float = Field(default=3.0, description="춘천 정책 API 요청 타임아웃(초)")
+
     model_config = {"env_file": ".env", "case_sensitive": True}
 
 
