@@ -20,6 +20,10 @@ interface UiState {
   // 이전 검색어/결과가 남아있지 않고 항상 초기 상태로 시작하도록 함
   searchVisitId: number
   bumpSearchVisit: () => void
+  // 검색/목록 화면의 "마감 정책" 토글 — 상세 화면 이동 후 뒤로가기로 돌아와도
+  // 화면이 리마운트되므로, 로컬 useState가 아닌 스토어에 둬서 값을 유지한다
+  showClosedOnly: boolean
+  toggleShowClosedOnly: () => void
 }
 
 export const useUiStore = create<UiState>((set) => ({
@@ -40,4 +44,6 @@ export const useUiStore = create<UiState>((set) => ({
   closeSearchInput: () => set({ searchInputOpen: false }),
   searchVisitId: 0,
   bumpSearchVisit: () => set((state) => ({ searchVisitId: state.searchVisitId + 1 })),
+  showClosedOnly: false,
+  toggleShowClosedOnly: () => set((state) => ({ showClosedOnly: !state.showClosedOnly })),
 }))
