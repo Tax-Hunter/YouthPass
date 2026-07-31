@@ -102,6 +102,9 @@ export interface PolicyListParams {
   category?: string[];
   keywords?: string[];
   sido?: string;
+  // 전국(is_nationwide) 정책만 조회 — true면 백엔드가 sido를 무시함("춘천"처럼 sido 코드가 없는
+  // 지역의 "전국 정책" 섹션 전용)
+  nationwide?: boolean;
   age?: number;
   size?: number;
   // "recommended": 백엔드 sort 패턴(popular|deadline|recent)에 아직 없음 — 지원 전까지 사용 금지.
@@ -118,6 +121,7 @@ function buildPolicyQuery(params: PolicyListParams & { page?: number }) {
   params.keywords?.forEach((k) => query.append("keywords", k));
   params.job?.forEach((j) => query.append("job", j));
   if (params.sido) query.set("sido", params.sido);
+  if (params.nationwide) query.set("nationwide", "true");
   if (params.age != null) query.set("age", String(params.age));
   if (params.page) query.set("page", String(params.page));
   if (params.size) query.set("size", String(params.size));
@@ -126,24 +130,26 @@ function buildPolicyQuery(params: PolicyListParams & { page?: number }) {
   return query;
 }
 
-function policyDetailQueryOptions(policyId: string) {
+export type PolicyDetailSource = "policy" | "chuncheon";
+
+function policyDetailQueryOptions(policyId: string, src: PolicyDetailSource) {
   return {
-    queryKey: ["policy", "detail", policyId] as const,
+    queryKey: ["policy", "detail", src, policyId] as const,
     queryFn: ({ signal }: { signal?: AbortSignal }) =>
-      fetcher(`${BASE}/policy/get/policy/${policyId}`, signal),
+      fetcher(`${BASE}/${src}/get/policy/${policyId}`, signal),
     staleTime: 60_000,
   };
 }
 
 // 카드에 hover하는 순간 상세 데이터를 미리 캐시에 채워, 클릭 후 진입 시 로딩 없이 바로 렌더되게 함
-export function prefetchPolicyDetail(queryClient: QueryClient, policyId: string) {
+export function prefetchPolicyDetail(queryClient: QueryClient, policyId: string, src: PolicyDetailSource = "policy") {
   if (USE_MOCK || !policyId) return;
-  return queryClient.prefetchQuery(policyDetailQueryOptions(policyId));
+  return queryClient.prefetchQuery(policyDetailQueryOptions(policyId, src));
 }
 
-export function usePolicyDetail(policyId: string | null) {
+export function usePolicyDetail(policyId: string | null, src: PolicyDetailSource = "policy") {
   const { data, error, isLoading } = useQuery<PolicyDetailData>({
-    ...policyDetailQueryOptions(policyId ?? ""),
+    ...policyDetailQueryOptions(policyId ?? "", src),
     enabled: !USE_MOCK && !!policyId,
   });
 

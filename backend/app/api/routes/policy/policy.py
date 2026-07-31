@@ -257,13 +257,16 @@ def _cache_ident(*parts) -> str:
     return hashlib.sha1(repr(norm).encode()).hexdigest()
 
 
-def _apply_base_filters(q, *, category, keywords, sido, age, applicable):
+def _apply_base_filters(q, *, category, keywords, sido, age, applicable, nationwide=False):
     # 목록/검색이 공유하는 기본 필터(분류·키워드·지역·연령·신청가능)
     if category:
         q = q.filter(Policy.category.in_(category))
     if keywords:
         q = q.filter(Policy.keywords.overlap(keywords))
-    if sido:
+    if nationwide:
+        # "춘천"처럼 sido 코드가 없는 지역의 "전국 정책" 섹션 전용 — sido는 무시하고 전국 정책만
+        q = q.filter(Policy.is_nationwide.is_(True))
+    elif sido:
         q = q.filter(or_(Policy.is_nationwide.is_(True),
                          Policy.region_sido.contains([sido])))
     if age is not None:
@@ -321,7 +324,7 @@ def _apply_sort(q, sort: str):
 
 def _es_search(
     db: Session, *, cache_kind: str, cache_id: str, q_text, category, keywords,
-    sido, age, applicable, sort, page, size,
+    sido, age, applicable, sort, page, size, nationwide=False,
 ) -> Tuple[Optional[PolicyListResponse], bool]:
     """q 검색을 ES(nori 형태소·멀티필드·관련도)로 시도. 반환 (응답 or None, cache_allowed).
 
@@ -342,7 +345,7 @@ def _es_search(
         plcy_nos, total = search_policy_ids(
             es, q_text=q_text, category=category, keywords=keywords, sido=sido,
             age=age, applicable=applicable, sort=sort, page=page, size=size,
-            today_kst=_today_kst(),
+            today_kst=_today_kst(), nationwide=nationwide,
         )
         items = _hydrate_cards(db, plcy_nos, size)
         # 색인·DB 시점차(재색인 실패 fail-soft 창 등)로 소프트만료분이 hydration에서 탈락하면
@@ -447,6 +450,10 @@ def search_policies(
     category: Optional[List[str]] = Query(default=None, description="카테고리(다중)"),
     keywords: Optional[List[str]] = Query(default=None, description="키워드(다중, 하나라도 포함)"),
     sido: Optional[str] = Query(default=None, description="시도코드(전국 OR 해당 시도)"),
+    nationwide: bool = Query(
+        default=False,
+        description="전국(is_nationwide) 정책만 조회 — true면 sido는 무시됨(춘천 등 sido 코드가 없는 지역의 전국 정책 섹션 전용)",
+    ),
     age: Optional[int] = Query(default=None, ge=0, description="나이(경계 포함 비교)"),
     applicable: bool = Query(default=False, description="신청 가능한 것만"),
     sort: str = Query(default="recent", pattern="^(popular|deadline|recent)$"),
@@ -468,10 +475,12 @@ def search_policies(
     if q_text:
         record_search(q_text)  # 캐시 조회 전 — 히트/미스 무관 빈도 기록 (search_stats)
     # 0건 기록은 필터(코드 8종 포함) 없는 순수 텍스트 질의만 — list_policies와 동일 계약
-    zero_loggable = bool(q_text) and not (category or keywords or sido or age is not None
+    zero_loggable = bool(q_text) and not (category or keywords or sido or nationwide
+                                          or age is not None
                                           or applicable or any(code_params.values()))
     # 캐시 식별자는 정규화된 코드 필터 기준 — 동치 요청(순서/중복 차이)이 같은 키를 공유
-    cache_id = _cache_ident(q_text, category, keywords, sido, age, applicable, sort, page, size,
+    cache_id = _cache_ident(q_text, category, keywords, sido, nationwide, age, applicable,
+                            sort, page, size,
                             sorted((k, tuple(sorted(v))) for k, v in code_params.items()))
     cached = policy_cache_get("search", cache_id)
     if cached is not None:
@@ -484,7 +493,8 @@ def search_policies(
     else:
         es_resp, cache_allowed = _es_search(
             db, cache_kind="search", cache_id=cache_id, q_text=q_text, category=category,
-            keywords=keywords, sido=sido, age=age, applicable=applicable, sort=sort, page=page, size=size)
+            keywords=keywords, sido=sido, age=age, applicable=applicable, sort=sort, page=page,
+            size=size, nationwide=nationwide)
         if es_resp is not None:
             if zero_loggable and es_resp.total == 0:
                 record_search_zero(q_text)
@@ -495,8 +505,8 @@ def search_policies(
         .outerjoin(PolicyStats, PolicyStats.plcy_no == Policy.plcy_no)
         .filter(Policy.is_active.is_(True))
     )
-    q = _apply_base_filters(q, category=category, keywords=keywords,
-                            sido=sido, age=age, applicable=applicable)
+    q = _apply_base_filters(q, category=category, keywords=keywords, sido=sido,
+                            age=age, applicable=applicable, nationwide=nationwide)
     q = _apply_text_filter(q, q_text)
     q = _apply_code_filters(q, code_params)
 
