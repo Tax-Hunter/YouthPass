@@ -1,4 +1,4 @@
-# 💰 청년패스 (YouthPass)
+# 💰 청패 (YouthPass)
 
 🌍 [청년패스 YOUTHPASS](https://www.youthpass.co.kr)
 

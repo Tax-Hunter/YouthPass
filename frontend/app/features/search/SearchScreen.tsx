@@ -364,7 +364,14 @@ export default function SearchScreen({ onNavigate }: ScreenProps) {
               </div>
             ))
           ) : !sortedItems || sortedItems.length === 0 ? (
-            <div className="text-center py-10">
+            <div className="text-center py-10 flex flex-col items-center gap-2">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/images/mascot/search.png"
+                alt=""
+                draggable={false}
+                className="w-20 h-auto object-contain select-none pointer-events-none mb-1"
+              />
               <p className="text-xs font-bold text-slate-400">
                 검색 결과가 없습니다.
               </p>

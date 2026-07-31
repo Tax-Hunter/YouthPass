@@ -8,8 +8,8 @@ import Providers from "@/app/providers";
 export const metadata: Metadata = {
   metadataBase: new URL("https://youthpass.co.kr"),
   title: {
-    default: "청년패스 - YOUTHPASS",
-    template: "%s | 청년패스",
+    default: "청년패스",
+    template: "%s | 청년패스 - 맞춤 청년 정책 추천 서비스 ",
   },
   description:
     "전국에 흩어진 청년 지원 정책을 한곳에 모아, 내게 맞는 정책과 혜택을 추천해 드려요. 청년패스에서 놓치기 쉬운 청년 정책을 빠르게 확인하세요.",
